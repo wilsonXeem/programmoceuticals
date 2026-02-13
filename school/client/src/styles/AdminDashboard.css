@@ -1,0 +1,218 @@
+.admin-dashboard {
+  min-height: 100vh;
+  background: #ffffff;
+  color: #2e2e2e;
+  padding: 40px 20px;
+}
+
+.admin-header {
+  max-width: 1200px;
+  margin: 0 auto 40px;
+  text-align: center;
+}
+
+.admin-header h1 {
+  font-size: 36px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #2e2e2e;
+}
+
+.admin-header p {
+  color: #64748b;
+  font-size: 18px;
+}
+
+.admin-tabs {
+  max-width: 1200px;
+  margin: 0 auto 40px;
+  display: flex;
+  gap: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.admin-tabs button {
+  background: none;
+  border: none;
+  color: #64748b;
+  padding: 16px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.admin-tabs button.active {
+  color: #0b5ed7;
+  border-bottom-color: #0b5ed7;
+}
+
+.admin-tabs button:hover {
+  color: #0b5ed7;
+}
+
+.cohorts-management,
+.certificates-management {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.cohorts-management h2,
+.certificates-management h2 {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 32px;
+  color: #2e2e2e;
+}
+
+.cohort-admin-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 32px;
+  margin-bottom: 24px;
+}
+
+.cohort-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.cohort-header h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #2e2e2e;
+}
+
+.cohort-header span {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.students-list h4 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: #64748b;
+}
+
+.student-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e2e8f0;
+  align-items: center;
+}
+
+.student-row:last-child {
+  border-bottom: none;
+}
+
+.student-row span {
+  color: #2e2e2e;
+  font-size: 14px;
+}
+
+.status {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status.active {
+  background: rgba(11, 94, 215, 0.12);
+  color: #0b5ed7;
+}
+
+.status.completed {
+  background: rgba(11, 94, 215, 0.12);
+  color: #0b5ed7;
+}
+
+.certificate-cohort {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 32px;
+  margin-bottom: 24px;
+}
+
+.certificate-cohort h3 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: #2e2e2e;
+}
+
+.certificate-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.certificate-row:last-child {
+  border-bottom: none;
+}
+
+.certificate-row span {
+  color: #2e2e2e;
+  font-size: 16px;
+}
+
+.generate-cert-btn {
+  background: #0b5ed7;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.generate-cert-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(11, 94, 215, 0.28);
+}
+
+.generate-cert-btn:disabled {
+  background: #e2e8f0;
+  color: #64748b;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+@media (max-width: 768px) {
+  .admin-tabs {
+    flex-direction: column;
+  }
+  
+  .cohort-header {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  
+  .student-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  .certificate-row {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+}

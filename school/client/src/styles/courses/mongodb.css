@@ -1,0 +1,7 @@
+.course-view[data-course="mongodb"] {
+  --pc-blue: #13aa52;
+  --pc-blue-dark: #0f8b43;
+  --pc-accent: #ecfccb;
+  --pc-bg-soft: #f0fdf4;
+  --pc-shadow: rgba(19, 170, 82, 0.2);
+}

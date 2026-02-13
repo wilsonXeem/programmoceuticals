@@ -1,0 +1,458 @@
+/* Enhanced Programming Notepad Styles */
+
+.enhanced-notepad {
+  width: 560px;
+  min-width: 440px;
+  min-height: 420px;
+  max-width: calc(100vw - 24px);
+  max-height: 700px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 16px;
+  box-shadow: 0 30px 60px rgba(15, 23, 42, 0.22);
+  font-family: "Inter", "Segoe UI", sans-serif;
+  z-index: 2002;
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  resize: both;
+}
+
+.enhanced-notepad .notepad-header {
+  background: linear-gradient(135deg, #f8fafc, #ffffff);
+  color: #0f172a;
+  padding: 14px 18px;
+  border-radius: 16px 16px 0 0;
+  cursor: move;
+  user-select: none;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  position: relative;
+}
+
+.enhanced-notepad.expanded {
+  width: calc(100vw - 32px);
+  height: calc(100vh - 120px);
+  max-height: none;
+  min-height: 420px;
+  resize: none;
+}
+
+.enhanced-notepad.expanded .notepad-content {
+  min-height: 0;
+  max-height: none;
+}
+
+.notepad-header-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.notepad-close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.notepad-expand-btn {
+  position: absolute;
+  top: 12px;
+  right: 44px;
+  background: #0b5ed7;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.notepad-expand-btn:hover {
+  background: #0a58ca;
+  transform: scale(1.05);
+}
+
+.notepad-close-btn:hover {
+  background: #ff3b30;
+  transform: scale(1.1);
+}
+
+.notepad-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toolbar-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.whiteboard-hint {
+  padding: 8px 10px;
+  border: 1px dashed rgba(15, 23, 42, 0.22);
+  border-radius: 10px;
+  background: rgba(11, 94, 215, 0.06);
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mode-select,
+.language-select,
+.category-select {
+  flex: 1;
+  min-width: 100px;
+}
+
+.template-select {
+  flex: 2;
+  min-width: 120px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.action-btn {
+  background: #ffffff !important;
+  padding: 6px 10px !important;
+  min-width: 40px;
+}
+
+.run-btn {
+  background: #16a34a !important;
+  color: white !important;
+  font-weight: 600;
+  padding: 6px 12px !important;
+}
+
+.clear-btn {
+  background: #ef4444 !important;
+  color: white !important;
+  padding: 6px 10px !important;
+}
+
+.notepad-toolbar select,
+.notepad-toolbar button {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.notepad-toolbar select {
+  min-width: 110px;
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.notepad-toolbar select:hover,
+.notepad-toolbar button:hover {
+  background: #eef2ff;
+  border-color: rgba(15, 23, 42, 0.2);
+}
+
+.run-btn {
+  background: #16a34a !important;
+  color: white !important;
+  font-weight: 600;
+}
+
+.run-btn:hover {
+  background: #218838 !important;
+}
+
+.notepad-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 420px;
+  max-height: 520px;
+  background: #ffffff;
+}
+
+/* Code Workspace Layout */
+.code-workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.code-editor-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 250px;
+}
+
+.code-editor-header {
+  background: #f8fafc;
+  color: #0f172a;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.inline-run-btn {
+  background: #16a34a;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+
+.inline-run-btn:hover {
+  background: #218838;
+}
+
+.code-editor {
+  flex: 1;
+  background: #0f172a;
+  color: #e2e8f0;
+  border: none;
+  padding: 16px;
+  font-family: "Fira Code", "Consolas", "Monaco", monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: none;
+  outline: none;
+  min-height: 220px;
+}
+
+.code-editor::placeholder {
+  color: #6a6a6a;
+  line-height: 1.5;
+}
+
+.code-output-section {
+  background: #0b1220;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  max-height: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
+.output-header {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.clear-output-btn {
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.clear-output-btn:hover {
+  background: #c82333;
+}
+
+.code-output {
+  margin: 0;
+  padding: 16px;
+  color: #38bdf8;
+  font-family: "Fira Code", "Consolas", "Monaco", monospace;
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-y: auto;
+  flex: 1;
+  max-height: 150px;
+}
+
+.notepad-textarea {
+  background: #ffffff;
+  color: #0f172a;
+  border: none;
+  padding: 20px 22px;
+  font-family: "Inter", "Segoe UI", sans-serif;
+  line-height: 1.7;
+  outline: none;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 420px;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.96), #ffffff),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 30px,
+      rgba(15, 23, 42, 0.05) 31px
+    );
+}
+
+.notepad-textarea:empty::before {
+  content: attr(data-placeholder);
+  color: #6a6a6a;
+  font-style: italic;
+  white-space: pre-line;
+}
+
+.notepad-footer {
+  background: #f8fafc;
+  padding: 10px 12px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 0 0 16px 16px;
+}
+
+.notepad-footer button {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.notepad-footer button:hover {
+  background: #eef2ff;
+}
+
+.note-info {
+  color: #64748b;
+  font-size: 11px;
+  text-transform: capitalize;
+}
+
+.programming-notepad-btn {
+  background: #0b5ed7 !important;
+  color: white !important;
+}
+
+.programming-notepad-btn:hover {
+  background: #005a9e !important;
+  transform: scale(1.05);
+}
+
+/* Code block styling within rich text */
+.notepad-textarea .code-block {
+  background: #0f172a;
+  border: 1px solid rgba(15, 23, 42, 0.2);
+  border-radius: 10px;
+  margin: 12px 0;
+  overflow-x: auto;
+}
+
+.notepad-textarea .code-block pre {
+  margin: 0;
+  padding: 12px;
+  color: #e2e8f0;
+  font-family: "Fira Code", "Consolas", "Monaco", monospace;
+  font-size: 13px;
+}
+
+/* Syntax highlighting colors */
+.language-javascript {
+  color: #f7df1e;
+}
+.language-python {
+  color: #3776ab;
+}
+.language-java {
+  color: #ed8b00;
+}
+.language-cpp {
+  color: #00599c;
+}
+.language-html {
+  color: #e34c26;
+}
+.language-css {
+  color: #1572b6;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .enhanced-notepad {
+    width: 94vw;
+    max-width: 520px;
+    right: 3vw !important;
+    max-height: 82vh;
+  }
+
+  .notepad-toolbar {
+    gap: 4px;
+  }
+
+  .notepad-toolbar select,
+  .notepad-toolbar button {
+    font-size: 11px;
+    padding: 4px 6px;
+  }
+}
+
+/* Animation */
+.enhanced-notepad {
+  animation: slideInFromRight 0.3s ease-out;
+}
+
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}

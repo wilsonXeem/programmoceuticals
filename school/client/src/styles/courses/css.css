@@ -1,0 +1,7 @@
+.course-view[data-course="css"] {
+  --pc-blue: #2965f1;
+  --pc-blue-dark: #1f4fd6;
+  --pc-accent: #f5f5f5;
+  --pc-bg-soft: #eef3ff;
+  --pc-shadow: rgba(41, 101, 241, 0.2);
+}

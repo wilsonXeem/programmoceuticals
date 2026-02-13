@@ -1,0 +1,7 @@
+.course-view[data-course="hosting"] {
+  --pc-blue: #475569;
+  --pc-blue-dark: #334155;
+  --pc-accent: #f97316;
+  --pc-bg-soft: #f1f5f9;
+  --pc-shadow: rgba(71, 85, 105, 0.2);
+}

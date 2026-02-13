@@ -1,0 +1,7 @@
+.course-view[data-course="excel"] {
+  --pc-blue: #1d6f42;
+  --pc-blue-dark: #155735;
+  --pc-accent: #eafbee;
+  --pc-bg-soft: #ecfdf3;
+  --pc-shadow: rgba(29, 111, 66, 0.22);
+}

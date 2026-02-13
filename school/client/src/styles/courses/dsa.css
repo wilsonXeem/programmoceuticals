@@ -1,0 +1,7 @@
+.course-view[data-course="dsa"] {
+  --pc-blue: #0ea5e9;
+  --pc-blue-dark: #0284c7;
+  --pc-accent: #0f172a;
+  --pc-bg-soft: #e9f7ff;
+  --pc-shadow: rgba(14, 165, 233, 0.22);
+}

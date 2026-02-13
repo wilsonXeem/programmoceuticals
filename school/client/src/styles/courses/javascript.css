@@ -1,0 +1,33 @@
+.course-view[data-course="javascript"] {
+  --pc-blue: #d4a017;
+  --pc-blue-dark: #b8860b;
+  --pc-accent: #111827;
+  --pc-bg: #ffffff;
+  --pc-bg-soft: #fffbea;
+  --pc-shadow: rgba(212, 160, 23, 0.18);
+  --pc-text: #111827;
+  --pc-muted: #4b5563;
+}
+
+/* Ensure JS code blocks match Python's high-contrast styling */
+.course-view[data-course="javascript"] .code-pre {
+  color: #e6edf3;
+}
+
+.course-view[data-course="javascript"] .code-content,
+.course-view[data-course="javascript"] .code-line {
+  color: #e6edf3;
+}
+
+.course-view[data-course="javascript"] .code-block .keyword { color: #ff7b72; }
+.course-view[data-course="javascript"] .code-block .declaration { color: #f7df1e; }
+.course-view[data-course="javascript"] .code-block .string { color: #a5d6ff; }
+.course-view[data-course="javascript"] .code-block .number { color: #f2cc60; }
+.course-view[data-course="javascript"] .code-block .comment { color: #8b949e; }
+.course-view[data-course="javascript"] .code-block .func { color: #d2a8ff; }
+.course-view[data-course="javascript"] .code-block .operator { color: #ffb86b; }
+.course-view[data-course="javascript"] .code-block .variable { color: #ffffff; }
+.course-view[data-course="javascript"] .code-block .property { color: #c9d1ff; }
+.course-view[data-course="javascript"] .code-block .method { color: #b392f0; }
+.course-view[data-course="javascript"] .code-block .boolean { color: #ffa657; }
+.course-view[data-course="javascript"] .code-block .null { color: #ff7b72; }

@@ -1,0 +1,7 @@
+.course-view[data-course="angularjs"] {
+  --pc-blue: #dd0031;
+  --pc-blue-dark: #b80027;
+  --pc-accent: #fff1f2;
+  --pc-bg-soft: #ffeef1;
+  --pc-shadow: rgba(221, 0, 49, 0.2);
+}

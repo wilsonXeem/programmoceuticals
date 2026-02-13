@@ -1,0 +1,7 @@
+.course-view[data-course="django"] {
+  --pc-blue: #092e20;
+  --pc-blue-dark: #051d15;
+  --pc-accent: #f0fdf4;
+  --pc-bg-soft: #e8f3ef;
+  --pc-shadow: rgba(9, 46, 32, 0.18);
+}

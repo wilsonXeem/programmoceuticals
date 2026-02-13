@@ -1,0 +1,121 @@
+.cohort-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.42);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 3200;
+}
+
+.cohort-modal {
+  width: min(560px, 100%);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 24px 56px rgba(15, 23, 42, 0.2);
+  position: relative;
+}
+
+.cohort-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.cohort-modal-close:hover {
+  background: #f1f5f9;
+  color: #0b5ed7;
+}
+
+.cohort-modal-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #0b5ed7;
+  background: rgba(11, 94, 215, 0.08);
+  border: 1px solid rgba(11, 94, 215, 0.22);
+}
+
+.cohort-modal h2 {
+  margin: 14px 0 12px;
+  font-size: 28px;
+  line-height: 1.25;
+  color: #2e2e2e;
+}
+
+.cohort-modal p {
+  margin: 0;
+  color: #475569;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.cohort-modal-cohort {
+  margin-top: 14px !important;
+  font-size: 14px !important;
+  font-weight: 600;
+  color: #0f172a !important;
+}
+
+.cohort-modal-actions {
+  margin-top: 22px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cohort-modal-primary,
+.cohort-modal-secondary {
+  border-radius: 10px;
+  padding: 11px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cohort-modal-primary {
+  border: 1px solid #0b5ed7;
+  color: #ffffff;
+  background: #0b5ed7;
+}
+
+.cohort-modal-primary:hover {
+  background: #0a58ca;
+}
+
+.cohort-modal-secondary {
+  border: 1px solid #cbd5e1;
+  color: #1e293b;
+  background: #ffffff;
+}
+
+.cohort-modal-secondary:hover {
+  background: #f8fafc;
+}
+
+@media (max-width: 640px) {
+  .cohort-modal {
+    padding: 22px;
+  }
+
+  .cohort-modal h2 {
+    font-size: 24px;
+  }
+}

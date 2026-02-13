@@ -1,0 +1,239 @@
+.student-dashboard {
+  min-height: 100vh;
+  background: #ffffff;
+  color: #2e2e2e;
+  padding: 40px 20px;
+}
+
+.dashboard-header {
+  max-width: 1200px;
+  margin: 0 auto 40px;
+  text-align: center;
+}
+
+.dashboard-header h1 {
+  font-size: 36px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #2e2e2e;
+}
+
+.dashboard-header p {
+  color: #64748b;
+  font-size: 18px;
+}
+
+.dashboard-grid {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 32px;
+}
+
+.dashboard-section {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 32px;
+}
+
+.dashboard-section h2 {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 24px;
+  color: #2e2e2e;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #64748b;
+}
+
+.browse-btn {
+  background: #0b5ed7;
+  color: #fff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 16px;
+  transition: all 0.3s ease;
+}
+
+.browse-btn:hover {
+  background: #0a58ca;
+  transform: translateY(-2px);
+}
+
+.cohorts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.cohort-card {
+  background: #e2e8f0;
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid #e2e8f0;
+}
+
+.cohort-info h3 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #2e2e2e;
+}
+
+.cohort-info p {
+  color: #64748b;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.cohort-progress {
+  margin: 16px 0;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #0b5ed7;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.cohort-progress span {
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.cohort-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+}
+
+.continue-btn {
+  background: #0b5ed7;
+  color: #fff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.continue-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(11, 94, 215, 0.2);
+  background: #0a58ca;
+}
+
+.continue-btn.small {
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+.next-session {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.free-courses-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.free-course-card {
+  background: #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+}
+
+.free-course-card h4 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #2e2e2e;
+}
+
+.course-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 12px 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.stats {
+  grid-column: span 2;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.stat-card {
+  background: #e2e8f0;
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  border: 1px solid #e2e8f0;
+}
+
+.stat-number {
+  font-size: 32px;
+  font-weight: 700;
+  color: #0b5ed7;
+  margin-bottom: 8px;
+}
+
+.stat-label {
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .stats {
+    grid-column: span 1;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .cohort-actions {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+  
+  .dashboard-header h1 {
+    font-size: 28px;
+  }
+}

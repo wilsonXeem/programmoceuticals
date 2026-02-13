@@ -1,0 +1,7 @@
+.course-view[data-course="react"] {
+  --pc-blue: #61dafb;
+  --pc-blue-dark: #37bfdc;
+  --pc-accent: #0f172a;
+  --pc-bg-soft: #eefcff;
+  --pc-shadow: rgba(97, 218, 251, 0.2);
+}

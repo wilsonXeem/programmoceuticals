@@ -1,0 +1,7 @@
+.course-view[data-course="nodejs"] {
+  --pc-blue: #3c873a;
+  --pc-blue-dark: #2f6f2e;
+  --pc-accent: #1f2937;
+  --pc-bg-soft: #f0fff2;
+  --pc-shadow: rgba(60, 135, 58, 0.2);
+}

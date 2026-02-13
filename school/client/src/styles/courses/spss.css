@@ -1,0 +1,7 @@
+.course-view[data-course="spss"] {
+  --pc-blue: #0073b1;
+  --pc-blue-dark: #005f92;
+  --pc-accent: #e0f2fe;
+  --pc-bg-soft: #eef7ff;
+  --pc-shadow: rgba(0, 115, 177, 0.2);
+}
