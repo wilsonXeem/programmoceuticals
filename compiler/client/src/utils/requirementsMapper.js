@@ -46,6 +46,17 @@ export const mapRequirementsToNode = (nodePath, apiOption = null, requirementKey
     }
   }
 
+  if (!requirement) {
+    return null;
+  }
+
+  if (apiOption && Array.isArray(requirement.requiredForOptions)) {
+    return {
+      ...requirement,
+      mandatory: requirement.requiredForOptions.includes(apiOption)
+    };
+  }
+
   return requirement;
 };
 

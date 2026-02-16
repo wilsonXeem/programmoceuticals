@@ -18,7 +18,7 @@ const formatFileSize = (bytes) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 };
 
-const DossierTree = ({ node, activeFilePath, onFileSelected, level = 0, enableSearch = false, onNodeUpdate, onNodeDelete, isEditable = false, apiOption = null, uploadedFiles = new Map() }) => {
+const DossierTree = ({ node, activeFilePath, onFileSelected, level = 0, enableSearch = false, onNodeUpdate, onNodeDelete, isEditable = false, apiOption = null, uploadedFiles = new Map(), consolidatedFolderPaths = new Set() }) => {
   
   // If search is enabled, use SearchableTree instead
   if (enableSearch && level === 0) {
@@ -122,6 +122,7 @@ const DossierTree = ({ node, activeFilePath, onFileSelected, level = 0, enableSe
 
   const isActive = node.type === 'file' && node.path === activeFilePath;
   const isLeafFolder = node.type === 'folder' && (!node.children || node.children.length === 0);
+  const isConsolidatedFolder = node.type === 'folder' && (node.children && node.children.length > 0) && consolidatedFolderPaths.has(node.path);
 
   return (
     <div>
@@ -331,8 +332,52 @@ const DossierTree = ({ node, activeFilePath, onFileSelected, level = 0, enableSe
               isEditable={isEditable}
               apiOption={apiOption}
               uploadedFiles={uploadedFiles}
+              consolidatedFolderPaths={consolidatedFolderPaths}
             />
           ))}
+          {isConsolidatedFolder && (
+            <div
+              className={`tree-item ${activeFilePath === node.path ? 'active' : ''} tree-file`}
+              onClick={() => onFileSelected(node)}
+              style={{
+                padding: '4px 4px',
+                paddingLeft: `${4 + (level + 1) * 12}px`,
+                cursor: 'pointer',
+                borderRadius: '2px',
+                fontSize: '0.7rem',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '3px',
+                backgroundColor: activeFilePath === node.path ? '#e3f2fd' : '#f8fafc',
+                borderLeft: level + 1 > 0 ? '1px solid #eee' : 'none',
+                minHeight: '20px'
+              }}
+            >
+              <span style={{ minWidth: '8px' }}></span>
+              <span style={{ minWidth: '12px', fontSize: '0.7rem', marginTop: '1px' }}>
+                <FontAwesomeIcon icon={faFile} />
+              </span>
+              <span style={{ flex: 1, wordBreak: 'break-word', lineHeight: '1.2' }}>
+                Single PDF Upload Option
+              </span>
+              {uploadedFiles.has(node.path) && (
+                <span style={{
+                  background: '#28a745',
+                  color: 'white',
+                  borderRadius: '50%',
+                  width: '16px',
+                  height: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '10px',
+                  marginLeft: '4px'
+                }}>
+                  ✓
+                </span>
+              )}
+            </div>
+          )}
           {isLeafFolder && (
             <div
               className={`tree-item ${activeFilePath === node.path ? 'active' : ''} tree-file`}

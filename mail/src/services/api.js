@@ -1,4 +1,5 @@
-const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000";
+const API_BASE =
+  process.env.REACT_APP_API_URL || "https://compiler-server-bay.vercel.app";
 
 export const apiFetch = async (path, { method = "GET", body, token } = {}) => {
   const headers = { "Content-Type": "application/json" };

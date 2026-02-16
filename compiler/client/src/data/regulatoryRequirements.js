@@ -214,7 +214,8 @@ export const NAFDAC_REQUIREMENTS = {
     ],
     format: "PDF",
     mandatory: true,
-    apiOptions: ["option2"],
+    requiredForOptions: ["option2"],
+    apiOptions: ["option2", "option4"],
     conditionalText: "Required only when using CEP route (Option 2)"
   },
 
@@ -227,7 +228,8 @@ export const NAFDAC_REQUIREMENTS = {
     ],
     format: "PDF",
     mandatory: true,
-    apiOptions: ["option3"],
+    requiredForOptions: ["option3"],
+    apiOptions: ["option3", "option4"],
     conditionalText: "Required only when using APIMF procedure (Option 3)"
   },
 
@@ -1857,7 +1859,7 @@ export const NAFDAC_REQUIREMENTS = {
       "Must not include information, data, or justification not already in Module 3 or other CTD modules",
       "Complete the QOS-PD template and follow ICH M4Q(R1)"
     ],
-    format: "PDF",
+    format: "Word",
     mandatory: true,
     apiOptions: ["all"],
     section: "Quality"
@@ -2132,6 +2134,8 @@ export const NAFDAC_REQUIREMENTS = {
     title: "Clinical Overview",
     description: "Critical analysis of the clinical data in the CTD.",
     requirements: [
+      "Submit section 2.5 as a single consolidated PDF file",
+      "The single PDF must include all subsections in order: 2.5.1 Product Development Rationale, 2.5.2 Overview of Biopharmaceutics, 2.5.3 Overview of Clinical Pharmacology, 2.5.4 Overview of Efficacy, 2.5.5 Overview of Safety, 2.5.6 Benefits and Risks Conclusions, 2.5.7 Literature References",
       "Provide conclusions and implications of clinical data; do not recapitulate data",
       "Clinical Summary provides factual summarization; Clinical Overview provides succinct discussion and interpretation",
       "Present in the order: Table of Contents, 2.5.1 Product Development Rationale, 2.5.2 Overview of Biopharmaceutics, 2.5.3 Overview of Clinical Pharmacology, 2.5.4 Overview of Efficacy, 2.5.5 Overview of Safety, 2.5.6 Benefits and Risks Conclusions, 2.5.7 Literature References",

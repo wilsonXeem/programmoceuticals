@@ -16,6 +16,7 @@ const CTDCompilerWrapper = () => {
     <CTDCompiler
       userTier={user?.tier || "free"}
       isAuthenticated={Boolean(user)}
+      splitUsageSubject={user?._id || user?.id || user?.email || ""}
       authToken={token}
       accessCode={accessCode}
       onExportStateChange={handleExportStateChange}

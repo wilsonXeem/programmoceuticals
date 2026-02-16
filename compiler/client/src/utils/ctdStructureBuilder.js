@@ -141,8 +141,14 @@ const applyModule3Overrides = (structure, profile) => {
   const module3 = findNodeByPath(structure, module3Path);
   if (!module3 || !module3.children) return;
 
-  const drugSubstanceTemplate = module3.children.find((child) => child.path.endsWith('/3.2.S'));
-  const finishedProductTemplate = module3.children.find((child) => child.path.endsWith('/3.2.P'));
+  const bodyOfDataContainer = module3.children.find(
+    (child) => child.path.endsWith('/3.2') && Array.isArray(child.children)
+  );
+  const module3Body = bodyOfDataContainer || module3;
+  if (!module3Body.children) return;
+
+  const drugSubstanceTemplate = module3Body.children.find((child) => child.path.endsWith('/3.2.S'));
+  const finishedProductTemplate = module3Body.children.find((child) => child.path.endsWith('/3.2.P'));
 
   if (!drugSubstanceTemplate || !finishedProductTemplate) return;
 
@@ -150,7 +156,7 @@ const applyModule3Overrides = (structure, profile) => {
   const finishedProductSections = buildFinishedProductSections(finishedProductTemplate, profile);
 
   const updatedChildren = [];
-  module3.children.forEach((child) => {
+  module3Body.children.forEach((child) => {
     if (child.path.endsWith('/3.2.S')) {
       updatedChildren.push(...drugSubstanceSections);
     } else if (child.path.endsWith('/3.2.P')) {
@@ -160,7 +166,7 @@ const applyModule3Overrides = (structure, profile) => {
     }
   });
 
-  module3.children = updatedChildren;
+  module3Body.children = updatedChildren;
 };
 
 const buildDossierStructure = (baseStructure, profile, rootPath, rootName) => {

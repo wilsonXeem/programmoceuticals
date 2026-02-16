@@ -97,6 +97,15 @@ export const validateFileForSection = ({ file, nodePath, requirement, requiremen
 
 export const validateDocumentAttestations = ({ fileName, rules, attestations }) => {
   const requirements = getDocumentRequirements({ fileName, rules });
+  if (requirements.length === 0) {
+    return { ok: true, message: '' };
+  }
+
+  // Backward compatibility: older uploads were saved before attestations were persisted.
+  if (!attestations || Object.keys(attestations).length === 0) {
+    return { ok: true, message: '' };
+  }
+
   const missing = requirements.filter((req) => !attestations?.[req.id]);
 
   if (missing.length > 0) {
@@ -116,7 +125,15 @@ export const validateExportReadiness = ({ allFiles, uploadedFiles, requirementRe
     const requirement = requirementResolver(fileNode);
     const rules = getSectionRules(fileNode.path, requirement, fileNode.requirementKey);
     const uploaded = uploadedFiles.get(fileNode.path);
-    const isRequired = requirement?.mandatory && rules.requiresFile;
+    const inModule13 = fileNode.path.startsWith('/ctd/module1/1.3/');
+    const inModule3 = fileNode.path.startsWith('/ctd/module3/');
+    const isCriticalWordSection = rules.sectionId === '1.4.2' || rules.sectionId === '2.3';
+    const isRequired = rules.requiresFile && (
+      requirement?.mandatory ||
+      inModule13 ||
+      inModule3 ||
+      isCriticalWordSection
+    );
 
     if (isRequired && !uploaded) {
       errors.push(`Missing required document: ${fileNode.name}`);

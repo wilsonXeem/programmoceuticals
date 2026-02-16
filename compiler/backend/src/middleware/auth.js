@@ -11,25 +11,40 @@ export async function authRequired(req, res, next) {
     return res.status(401).json({ error: "Missing auth token" });
   }
 
+  let payload;
   try {
-    const payload = jwt.verify(token, config.jwtSecret);
-    const user = await User.findById(payload.sub).select(
-      "email username phone whatsappNumber tier exportCredits pendingAccessCodes usedAccessCodes"
-    );
-
-    if (!user) {
-      return res.status(401).json({ error: "Invalid auth token" });
-    }
-
-    if (ensureAccessState(user)) {
-      await user.save();
-    }
-
-    req.user = toUserPayload(user);
-    return next();
+    payload = jwt.verify(token, config.jwtSecret);
   } catch (error) {
     return res.status(401).json({ error: "Invalid auth token" });
   }
+
+  let user;
+  try {
+    user = await User.findById(payload.sub).select(
+      "email username phone whatsappNumber tier exportCredits pendingAccessCodes usedAccessCodes"
+    );
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error("Auth lookup failed", error);
+    return res.status(500).json({ error: "Failed to validate auth token" });
+  }
+
+  if (!user) {
+    return res.status(401).json({ error: "Invalid auth token" });
+  }
+
+  try {
+    if (ensureAccessState(user)) {
+      await user.save();
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error("Auth state reconciliation failed", error);
+    return res.status(500).json({ error: "Failed to validate auth token" });
+  }
+
+  req.user = toUserPayload(user);
+  return next();
 }
 
 export function adminRequired(req, res, next) {

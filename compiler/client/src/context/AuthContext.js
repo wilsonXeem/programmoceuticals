@@ -43,12 +43,23 @@ export const AuthProvider = ({ children }) => {
           setLoading(false);
         }
       } catch (error) {
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(ACCESS_CODE_KEY);
+        const isUnauthorized = Number(error?.status) === 401;
+        if (isUnauthorized) {
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(ACCESS_CODE_KEY);
+          if (active) {
+            setToken(null);
+            setAccessCode(null);
+            setUser(null);
+            setLoading(false);
+          }
+          return;
+        }
+
+        // Keep session state for transient server/network failures.
+        // eslint-disable-next-line no-console
+        console.error("Session refresh failed", error);
         if (active) {
-          setToken(null);
-          setAccessCode(null);
-          setUser(null);
           setLoading(false);
         }
       }

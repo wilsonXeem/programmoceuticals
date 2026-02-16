@@ -634,12 +634,59 @@ a {
   line-height: 1.55;
 }
 
+.manual-page {
+  gap: 1.1rem;
+}
+
+.manual-page .public-card h1 {
+  margin: 0;
+}
+
+.manual-page .public-card h2,
+.manual-page .public-card h3 {
+  margin: 1rem 0 0;
+}
+
+.manual-page .public-card h2:first-child,
+.manual-page .public-card h3:first-child {
+  margin-top: 1rem;
+}
+
+.manual-hero-card {
+  border-color: #bfdbfe;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.manual-quick-links {
+  margin-top: 0.9rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.manual-quick-links a {
+  text-decoration: none;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #334155;
+  background: #ffffff;
+}
+
+.manual-quick-links a:hover {
+  border-color: #0b5ed7;
+  color: #0b5ed7;
+}
+
 .manual-list {
   margin: 0;
   padding-left: 1.2rem;
   color: #334155;
   display: grid;
   gap: 0.45rem;
+  line-height: 1.6;
 }
 
 .manual-checkpoints {
@@ -663,6 +710,60 @@ a {
 .manual-checkpoint p {
   margin: 0.35rem 0 0;
   font-size: 0.85rem;
+}
+
+.manual-table-wrap {
+  margin-top: 0.75rem;
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.manual-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+
+.manual-table th,
+.manual-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.7rem 0.8rem;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.84rem;
+  color: #334155;
+  line-height: 1.5;
+}
+
+.manual-table th {
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.manual-table tr:last-child td {
+  border-bottom: none;
+}
+
+.manual-note {
+  margin-top: 0.8rem;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e3a8a;
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+  font-size: 0.83rem;
+  line-height: 1.55;
+}
+
+.manual-actions {
+  margin-top: 0.9rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
 }
 
 /* Compiler Workspace Layout */

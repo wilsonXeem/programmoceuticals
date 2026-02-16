@@ -42,6 +42,12 @@ export const GUIDELINE_RULES = {
       requiresFile: true,
       note: 'QIS must be submitted in Word format.'
     },
+    '2.3': {
+      format: 'Word',
+      allowedExtensions: ['doc', 'docx'],
+      requiresFile: true,
+      note: 'QOS must be submitted in Word format.'
+    },
     '1.5': {
       format: 'Electronic Media',
       allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'zip'],

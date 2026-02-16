@@ -1,14 +1,12 @@
-import { filterModules } from "../utils/dossierFilter.js";
 import Dossier from "../models/Dossier.js";
 import User from "../models/User.js";
 import Export from "../models/Export.js";
 import { consumeAccessCode, ensureAccessState, getCurrentAccessCode } from "../utils/accessCodes.js";
 
 export async function requestExport(req, res) {
-  const { dossierId, data, name, accessCode } = req.body || {};
+  const { dossierId, name, accessCode } = req.body || {};
 
   let dossier = null;
-  let dossierData = null;
 
   if (dossierId) {
     dossier = await Dossier.findOne({ _id: dossierId, userId: req.user.id }).lean();
@@ -16,18 +14,13 @@ export async function requestExport(req, res) {
     if (!dossier) {
       return res.status(404).json({ error: "Dossier not found" });
     }
-
-    dossierData = dossier.data;
-  } else if (data) {
+  } else {
     const created = await Dossier.create({
       userId: req.user.id,
-      name: name || "Untitled Dossier",
-      data
+      name: name || "Local Export",
+      data: { local_only: true }
     });
-    dossier = { id: created._id.toString(), name: created.name };
-    dossierData = data;
-  } else {
-    return res.status(400).json({ error: "dossierId or data is required" });
+    dossier = created.toObject();
   }
 
   let updatedUser = null;
@@ -63,17 +56,15 @@ export async function requestExport(req, res) {
 
     await user.save();
     updatedUser = user;
-  } else {
-    dossierData = filterModules(dossierData, ["module1", "module2", "1", "2"]);
   }
 
-  await Export.create({ userId: req.user.id, dossierId: dossierId || dossier.id });
+  await Export.create({ userId: req.user.id, dossierId: dossier._id || dossier.id });
 
   return res.json({
     dossier: {
       id: dossier.id || dossier._id?.toString(),
       name: dossier.name,
-      data: dossierData
+      data: null
     },
     export_credits: updatedUser ? updatedUser.exportCredits : req.user.export_credits,
     access_code: updatedUser ? getCurrentAccessCode(updatedUser) : null

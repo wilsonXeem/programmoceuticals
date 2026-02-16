@@ -67,20 +67,7 @@ export const ctdStructure = {
         { name: "2.2 CTD Introduction", type: "file", path: "/ctd/module2/2.2" },
         { name: "2.3 Quality Overall Summary (QOS-PD)", type: "file", path: "/ctd/module2/2.3" },
         { name: "2.4 Nonclinical Overview (not required for generics)", type: "file", path: "/ctd/module2/2.4" },
-        {
-          name: "2.5 Clinical Overview (not required for generics)",
-          type: "folder",
-          path: "/ctd/module2/2.5",
-          children: [
-            { name: "2.5.1 Product Development Rationale", type: "file", path: "/ctd/module2/2.5/2.5.1" },
-            { name: "2.5.2 Overview of Biopharmaceutics", type: "file", path: "/ctd/module2/2.5/2.5.2" },
-            { name: "2.5.3 Overview of Clinical Pharmacology", type: "file", path: "/ctd/module2/2.5/2.5.3" },
-            { name: "2.5.4 Overview of Efficacy", type: "file", path: "/ctd/module2/2.5/2.5.4" },
-            { name: "2.5.5 Overview of Safety", type: "file", path: "/ctd/module2/2.5/2.5.5" },
-            { name: "2.5.6 Benefits and Risks Conclusions", type: "file", path: "/ctd/module2/2.5/2.5.6" },
-            { name: "2.5.7 Literature References", type: "file", path: "/ctd/module2/2.5/2.5.7" }
-          ]
-        },
+        { name: "2.5 Clinical Overview (single consolidated PDF; not required for generics)", type: "file", path: "/ctd/module2/2.5" },
         { name: "2.6 Nonclinical Written and Tabulated Summaries (not required for generics)", type: "file", path: "/ctd/module2/2.6" },
         { name: "2.7 Clinical Summary (not required for generics)", type: "file", path: "/ctd/module2/2.7" }
       ]
@@ -91,6 +78,11 @@ export const ctdStructure = {
       path: "/ctd/module3",
       children: [
         { name: "3.1 Table of Contents", type: "file", path: "/ctd/module3/3.1" },
+        {
+          name: "Body of Data",
+          type: "folder",
+          path: "/ctd/module3/3.2",
+          children: [
         {
           name: "3.2.S Drug Substance",
           type: "folder",
@@ -247,9 +239,9 @@ export const ctdStructure = {
           type: "folder",
           path: "/ctd/module3/3.2.A",
           children: [
-            { name: "3.2.A.1 Facilities and Equipment (not applicable for non-biotech)", type: "file", path: "/ctd/module3/3.2.A/3.2.A.1" },
+            { name: "3.2.A.1 Facilities and Equipment", type: "file", path: "/ctd/module3/3.2.A/3.2.A.1" },
             { name: "3.2.A.2 Adventitious Agent's Safety Evaluation", type: "file", path: "/ctd/module3/3.2.A/3.2.A.2" },
-            { name: "3.2.A.3 Novel Excipients (not accepted by NAFDAC)", type: "file", path: "/ctd/module3/3.2.A/3.2.A.3" }
+            { name: "3.2.A.3 Novel Excipients", type: "file", path: "/ctd/module3/3.2.A/3.2.A.3" }
           ]
         },
         {
@@ -267,6 +259,8 @@ export const ctdStructure = {
               ]
             },
             { name: "3.2.R.2 Analytical Procedures and Validation Information", type: "file", path: "/ctd/module3/3.2.R/3.2.R.2" }
+          ]
+        },
           ]
         },
         { name: "3.3 Literature References", type: "file", path: "/ctd/module3/3.3" }
