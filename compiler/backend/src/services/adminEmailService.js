@@ -94,7 +94,7 @@ function buildLetterTitleHtml(letterTitle) {
     return "";
   }
 
-  return `<p style="margin:0 0 14px 0; font-weight:700;">${escapeHtml(value)}</p>`;
+  return `<p style="margin:0 0 14px 0; font-weight:700; text-align:center;">${escapeHtml(value)}</p>`;
 }
 
 const RECEIVER_ADDRESS_MODES = new Set(["email", "name", "custom"]);
