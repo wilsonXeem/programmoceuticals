@@ -5,8 +5,8 @@ import { fetchPaymentPackages, initializePayment, verifyPayment } from "../servi
 
 const fallbackPackages = [
   { id: "single", name: "Single", credits: 1, amountNaira: 100000 },
-  { id: "triple", name: "Triple", credits: 3, amountNaira: 250000 },
-  { id: "business", name: "Business", credits: 5, amountNaira: 400000 },
+  { id: "triple", name: "Triple", credits: 3, amountNaira: 270000 },
+  { id: "business", name: "Business", credits: 5, amountNaira: 425000 },
   { id: "custom", name: "Custom", credits: null, amountNaira: null, minCredits: 6, rateNaira: 85000 }
 ];
 
@@ -263,7 +263,7 @@ const Account = () => {
             <h2 className="account-card-title">Export Packages</h2>
           </div>
           <p className="account-packages-desc">
-            Purchase export credits securely with Paystack. Custom packages above 5 exports are auto-calculated at ₦85,000 per export.
+            Purchase export credits securely with Paystack. Custom packages for 6+ dossiers are auto-calculated at ₦85,000 per dossier.
           </p>
           <div className="account-packages-grid">
             {availablePackages.map((pkg) => {

@@ -8,8 +8,8 @@ const PAYSTACK_BASE_URL = "https://api.paystack.co";
 
 const PACKAGE_MAP = {
   single: { id: "single", name: "Single", credits: 1, amountNaira: 100000 },
-  triple: { id: "triple", name: "Triple", credits: 3, amountNaira: 250000 },
-  business: { id: "business", name: "Business", credits: 5, amountNaira: 400000 }
+  triple: { id: "triple", name: "Triple", credits: 3, amountNaira: 270000 },
+  business: { id: "business", name: "Business", credits: 5, amountNaira: 425000 }
 };
 
 const CUSTOM_PACKAGE_CONFIG = {
