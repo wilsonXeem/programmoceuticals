@@ -327,9 +327,9 @@ function buildTemplateHtml({ recipientEmail, body, templateOptions }) {
                     <td style="font-family: Arial, Helvetica, sans-serif; color:#111111; font-size:14.5px; line-height:1.65;">
                       ${receiverAddressHtml}
 
-                      ${letterTitleHtml}
-
                       <p style="margin:0 0 14px 0;">${safeSalutation} <strong>${safeReceiverAddress}</strong>,</p>
+
+                      ${letterTitleHtml}
 
                       ${htmlBody}
 
@@ -419,8 +419,8 @@ function buildTemplateText({ recipientEmail, body, templateOptions }) {
     "",
     ...receiverAddressLines,
     ...(receiverAddressLines.length > 0 ? [""] : []),
-    ...(letterTitle ? [letterTitle, ""] : []),
     `${normalizedOptions.salutation} ${receiverAddress},`,
+    ...(letterTitle ? [letterTitle, ""] : []),
     "",
     String(personalizedBody || "").trim(),
     "",

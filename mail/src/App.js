@@ -100,6 +100,7 @@ const App = () => {
   });
   const [recipientInput, setRecipientInput] = useState("");
   const [previewPageIndex, setPreviewPageIndex] = useState(0);
+  const [mobilePanel, setMobilePanel] = useState("compose");
 
   const [sendLoading, setSendLoading] = useState(false);
   const [emailStatus, setEmailStatus] = useState({ type: "", message: "" });
@@ -114,6 +115,7 @@ const App = () => {
     setUser(null);
     setRecipientInput("");
     setPreviewPageIndex(0);
+    setMobilePanel("compose");
     setEmailStatus({ type: "", message: "" });
     setPreviewHtml("");
     setPreviewError("");
@@ -575,8 +577,33 @@ const App = () => {
             </form>
           </section>
         ) : (
-          <section className="mailer-layout">
-            <article className="mail-card composer-card">
+          <>
+            <div className="mobile-panel-toggle" role="tablist" aria-label="Mailer workspace view">
+              <button
+                type="button"
+                className={`mobile-toggle-btn ${mobilePanel === "compose" ? "active" : ""}`}
+                role="tab"
+                aria-selected={mobilePanel === "compose"}
+                onClick={() => setMobilePanel("compose")}
+              >
+                Compose
+              </button>
+              <button
+                type="button"
+                className={`mobile-toggle-btn ${mobilePanel === "preview" ? "active" : ""}`}
+                role="tab"
+                aria-selected={mobilePanel === "preview"}
+                onClick={() => setMobilePanel("preview")}
+              >
+                Preview
+              </button>
+            </div>
+            <section className="mailer-layout">
+              <article
+                className={`mail-card composer-card workspace-panel ${
+                  mobilePanel === "compose" ? "is-active" : ""
+                }`}
+              >
               <div className="section-head">
                 <h2>Email Users</h2>
                 <span className="section-subtle">
@@ -768,7 +795,11 @@ const App = () => {
               </form>
             </article>
 
-            <article className="mail-card preview-card">
+              <article
+                className={`mail-card preview-card workspace-panel ${
+                  mobilePanel === "preview" ? "is-active" : ""
+                }`}
+              >
               <div className="preview-header">
                 <span>Live Preview (As Sent)</span>
                 <span className="preview-badge">
@@ -820,8 +851,9 @@ const App = () => {
                 className="preview-frame"
                 srcDoc={previewFrameHtml}
               />
-            </article>
-          </section>
+              </article>
+            </section>
+          </>
         )}
       </main>
     </div>
