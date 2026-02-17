@@ -35,7 +35,8 @@ const UploadInterface = ({
   onAdditionalFileRemove,
   uploadedFile,
   additionalFiles = [],
-  apiOption
+  apiOption,
+  isMobileLayout = false
 }) => {
   const requirement = mapRequirementsToNode(section.path, apiOption, section.requirementKey);
   const sectionRules = getSectionRules(section.path, requirement, section.requirementKey);
@@ -46,6 +47,13 @@ const UploadInterface = ({
   const [uploadError, setUploadError] = useState('');
   const [isDragOver, setIsDragOver] = useState(false);
   const [uploadMode, setUploadMode] = useState('primary');
+  const cardPadding = isMobileLayout ? "1rem" : "2rem";
+  const sectionPadding = isMobileLayout ? "0.75rem" : "1rem";
+  const sectionMargin = isMobileLayout ? "0.75rem" : "1rem";
+  const sectionLargeMargin = isMobileLayout ? "0.9rem" : "1.5rem";
+  const primaryButtonPadding = isMobileLayout ? "0.6rem 0.9rem" : "0.75rem 1.1rem";
+  const secondaryButtonPadding = isMobileLayout ? "0.6rem 0.9rem" : "0.75rem 1.1rem";
+  const buttonFontSize = isMobileLayout ? "0.84rem" : "0.9rem";
 
   const hasAnyUploadedFile = Boolean(uploadedFile) || additionalFiles.length > 0;
 
@@ -157,18 +165,18 @@ const UploadInterface = ({
       <div style={{
         background: "white",
         borderRadius: "8px",
-        padding: "2rem",
+        padding: cardPadding,
         boxShadow: "0 2px 10px rgba(0,0,0,0.1)"
       }}>
-        <h2 style={{ margin: "0 0 1rem 0", color: "#0b5ed7" }}>{section.name}</h2>
+        <h2 style={{ margin: isMobileLayout ? "0 0 0.7rem 0" : "0 0 1rem 0", color: "#0b5ed7" }}>{section.name}</h2>
 
         {requirement && (
           <div style={{
             background: (hasAnyUploadedFile || previewFile) ? "#f0f9ff" : "#f8f9fa",
             border: `1px solid ${(hasAnyUploadedFile || previewFile) ? "#bfdbfe" : "#e9ecef"}`,
             borderRadius: "6px",
-            padding: "1rem",
-            marginBottom: "1.5rem"
+            padding: sectionPadding,
+            marginBottom: sectionLargeMargin
           }}>
             <h4 style={{ margin: "0 0 0.5rem 0", color: "#0b5ed7" }}>
               {(hasAnyUploadedFile || previewFile) ? "✓ Requirements Met:" : "Requirements:"}
@@ -214,10 +222,10 @@ const UploadInterface = ({
             background: "#fee2e2",
             border: "1px solid #fecaca",
             borderRadius: "6px",
-            padding: "0.75rem",
-            marginBottom: "1rem",
+            padding: isMobileLayout ? "0.65rem" : "0.75rem",
+            marginBottom: sectionMargin,
             color: "#b91c1c",
-            fontSize: "0.9rem"
+            fontSize: isMobileLayout ? "0.84rem" : "0.9rem"
           }}>
             {uploadError}
           </div>
@@ -228,8 +236,8 @@ const UploadInterface = ({
             background: "#d4edda",
             border: "1px solid #c3e6cb",
             borderRadius: "6px",
-            padding: "1rem",
-            marginBottom: "1rem"
+            padding: sectionPadding,
+            marginBottom: sectionMargin
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <FontAwesomeIcon icon={faCheck} style={{ color: "#155724" }} />
@@ -249,8 +257,8 @@ const UploadInterface = ({
             background: "#eff6ff",
             border: "1px solid #bfdbfe",
             borderRadius: "6px",
-            padding: "1rem",
-            marginBottom: "1rem"
+            padding: sectionPadding,
+            marginBottom: sectionMargin
           }}>
             <div style={{ color: "#1e3a8a", fontWeight: "600", marginBottom: "0.5rem", fontSize: "0.9rem" }}>
               Additional files ({additionalFiles.length})
@@ -307,7 +315,7 @@ const UploadInterface = ({
             style={{
               border: isDragOver ? "2px dashed #0b5ed7" : "2px dashed #d1d5db",
               borderRadius: "8px",
-              padding: "2rem",
+              padding: isMobileLayout ? "1rem 0.75rem" : "2rem",
               textAlign: "center",
               background: isDragOver ? "#eff6ff" : "#fafafa",
               transition: "all 0.15s ease"
@@ -316,15 +324,15 @@ const UploadInterface = ({
             <FontAwesomeIcon
               icon={faUpload}
               style={{
-                fontSize: "2rem",
+                fontSize: isMobileLayout ? "1.55rem" : "2rem",
                 color: isDragOver ? "#0b5ed7" : "#666",
-                marginBottom: "1rem"
+                marginBottom: isMobileLayout ? "0.65rem" : "1rem"
               }}
             />
-            <p style={{ margin: "0 0 1rem 0", color: "#666" }}>
+            <p style={{ margin: isMobileLayout ? "0 0 0.6rem 0" : "0 0 1rem 0", color: "#666" }}>
               {uploadedFile ? "Replace main file or add more files to this section" : "Upload main document for this section"}
             </p>
-            <p style={{ margin: "0 0 1rem 0", color: "#64748b", fontSize: "0.85rem" }}>
+            <p style={{ margin: isMobileLayout ? "0 0 0.65rem 0" : "0 0 1rem 0", color: "#64748b", fontSize: isMobileLayout ? "0.8rem" : "0.85rem" }}>
               Main file exports with the section name. Additional files keep your filenames.
             </p>
 
@@ -349,11 +357,11 @@ const UploadInterface = ({
                 style={{
                   background: "#0b5ed7",
                   color: "white",
-                  padding: "0.75rem 1.1rem",
+                  padding: primaryButtonPadding,
                   borderRadius: "6px",
                   cursor: "pointer",
                   display: "inline-block",
-                  fontSize: "0.9rem",
+                  fontSize: buttonFontSize,
                   fontWeight: "500"
                 }}
               >
@@ -365,11 +373,11 @@ const UploadInterface = ({
                   style={{
                     background: "#e2e8f0",
                     color: "#0f172a",
-                    padding: "0.75rem 1.1rem",
+                    padding: secondaryButtonPadding,
                     borderRadius: "6px",
                     cursor: "pointer",
                     display: "inline-block",
-                    fontSize: "0.9rem",
+                    fontSize: buttonFontSize,
                     fontWeight: "500"
                   }}
                 >
@@ -383,7 +391,7 @@ const UploadInterface = ({
             <div style={{
               display: "flex",
               gap: "1rem",
-              marginBottom: "0.65rem",
+              marginBottom: isMobileLayout ? "0.55rem" : "0.65rem",
               justifyContent: "center"
             }}>
               <button
@@ -392,10 +400,10 @@ const UploadInterface = ({
                   background: "#28a745",
                   color: "white",
                   border: "none",
-                  padding: "0.75rem 1.5rem",
+                  padding: isMobileLayout ? "0.65rem 1.1rem" : "0.75rem 1.5rem",
                   borderRadius: "6px",
                   cursor: "pointer",
-                  fontSize: "0.9rem",
+                  fontSize: buttonFontSize,
                   fontWeight: "600"
                 }}
               >
@@ -407,10 +415,10 @@ const UploadInterface = ({
                   background: "#6c757d",
                   color: "white",
                   border: "none",
-                  padding: "0.75rem 1rem",
+                  padding: isMobileLayout ? "0.65rem 0.9rem" : "0.75rem 1rem",
                   borderRadius: "6px",
                   cursor: "pointer",
-                  fontSize: "0.9rem"
+                  fontSize: buttonFontSize
                 }}
               >
                 Cancel
@@ -425,10 +433,10 @@ const UploadInterface = ({
 
             <div style={{
               width: "100%",
-              maxWidth: "80vw",
+              maxWidth: isMobileLayout ? "100%" : "80vw",
               background: "white",
               borderRadius: "8px",
-              height: "80vh",
+              height: isMobileLayout ? "62vh" : "80vh",
               overflow: "auto",
               boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
               margin: "0 auto"
@@ -436,7 +444,7 @@ const UploadInterface = ({
               {previewFile?.type === 'application/pdf' ? (
                 <SimplePDFViewer
                   fileUrl={previewUrl}
-                  height="80vh"
+                  height={isMobileLayout ? "62vh" : "80vh"}
                 />
               ) : (
                 <div style={{
@@ -474,6 +482,7 @@ const defaultProfile = {
 const ALERT_TIMEOUT_MS = 5000;
 const LONG_PDF_SPLIT_USAGE_KEY = 'ctd-long-pdf-split-usage-v1';
 const LONG_PDF_FREE_MAX_USES = 3;
+const MOBILE_BREAKPOINT = 768;
 
 const readLongPdfSplitUsage = () => {
   if (typeof window === 'undefined') return {};
@@ -508,6 +517,9 @@ const CTDCompiler = ({
   const [allFiles, setAllFiles] = useState([]);
   const [selectedSection, setSelectedSection] = useState(null);
   const [isNavCollapsed, setIsNavCollapsed] = useState(false);
+  const [viewportWidth, setViewportWidth] = useState(
+    typeof window === 'undefined' ? 1280 : window.innerWidth
+  );
   const [searchTerm, setSearchTerm] = useState('');
   const [dossierProfile, setDossierProfile] = useState(defaultProfile);
   const [showSetup, setShowSetup] = useState(true);
@@ -541,6 +553,7 @@ const CTDCompiler = ({
   const [splitUsageCount, setSplitUsageCount] = useState(0);
   const thumbnailJobRef = useRef(0);
   const canUseSetup = userTier === 'paid';
+  const isMobileLayout = viewportWidth <= MOBILE_BREAKPOINT;
 
   const splitUsageScopeKey = useMemo(() => {
     if (userTier === 'paid') return null;
@@ -1789,7 +1802,9 @@ const CTDCompiler = ({
 
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 768) {
+      const nextWidth = window.innerWidth;
+      setViewportWidth(nextWidth);
+      if (nextWidth <= MOBILE_BREAKPOINT) {
         setIsNavCollapsed(true);
       }
     };
@@ -1829,21 +1844,22 @@ const CTDCompiler = ({
     <div className="review-container" style={{ 
       position: "relative", 
       display: "flex", 
-      flexDirection: window.innerWidth <= 768 ? "column" : "row",
-      height: window.innerWidth <= 768 ? "auto" : "100%", 
-      overflow: "hidden", 
+      flexDirection: isMobileLayout ? "column" : "row",
+      height: isMobileLayout ? "auto" : "100%", 
+      overflow: isMobileLayout ? "visible" : "hidden", 
       marginTop: "0" 
     }}>
       <div
         className={`file-nav ${isNavCollapsed ? "collapsed" : ""}`}
         style={{
-          width: isNavCollapsed ? "0" : window.innerWidth <= 768 ? "100%" : "360px",
-          minWidth: isNavCollapsed ? "0" : window.innerWidth <= 768 ? "100%" : "360px",
-          borderRight: window.innerWidth <= 768 ? "none" : "1px solid #e5e7eb",
+          width: isNavCollapsed ? "0" : isMobileLayout ? "100%" : "360px",
+          minWidth: isNavCollapsed ? "0" : isMobileLayout ? "100%" : "360px",
+          borderRight: isMobileLayout ? "none" : "1px solid #e5e7eb",
           background: "white",
-          boxShadow: window.innerWidth <= 768 ? "0 2px 4px rgba(0, 0, 0, 0.1)" : "2px 0 8px rgba(0,0,0,0.05)",
+          boxShadow: isMobileLayout ? "0 2px 4px rgba(0, 0, 0, 0.1)" : "2px 0 8px rgba(0,0,0,0.05)",
           transition: "all 0.3s ease",
-          maxHeight: window.innerWidth <= 768 ? "50vh" : "100vh",
+          height: isNavCollapsed ? "0" : "100dvh",
+          maxHeight: isNavCollapsed ? "0" : "100dvh",
           overflowY: "auto",
           overflowX: "hidden",
           display: isNavCollapsed ? "none" : "block"
@@ -2014,7 +2030,7 @@ const CTDCompiler = ({
         {!isNavCollapsed && (
           <div
             style={{
-              maxHeight: "calc(100vh - 200px)",
+              maxHeight: "calc(100dvh - 200px)",
               overflowY: "auto",
               padding: "1rem 0.5rem 0 0.5rem",
             }}
@@ -2038,29 +2054,31 @@ const CTDCompiler = ({
       <button
         onClick={() => setIsNavCollapsed(!isNavCollapsed)}
         style={{
-          position: "absolute",
-          left: isNavCollapsed ? "10px" : "348px",
-          top: "50%",
-          transform: "translateY(-50%)",
-          width: "28px",
-          height: "56px",
+          position: isMobileLayout ? "fixed" : "absolute",
+          left: isMobileLayout ? "auto" : isNavCollapsed ? "10px" : "348px",
+          right: isMobileLayout ? "16px" : "auto",
+          top: isMobileLayout ? "86px" : "50%",
+          bottom: "auto",
+          transform: isMobileLayout ? "none" : "translateY(-50%)",
+          width: isMobileLayout ? "44px" : "28px",
+          height: isMobileLayout ? "44px" : "56px",
           backgroundColor: "#0b5ed7",
           border: "none",
-          borderRadius: "14px",
+          borderRadius: isMobileLayout ? "999px" : "14px",
           cursor: "pointer",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           color: "white",
-          fontSize: "14px",
+          fontSize: isMobileLayout ? "16px" : "14px",
           boxShadow: "0 6px 14px rgba(0,0,0,0.18)",
-          zIndex: 20,
+          zIndex: isMobileLayout ? 1200 : 20,
           pointerEvents: "auto",
-          transition: "left 0.2s ease"
+          transition: isMobileLayout ? "transform 0.2s ease" : "left 0.2s ease"
         }}
         title={isNavCollapsed ? "Expand sidebar" : "Collapse sidebar"}
       >
-        {isNavCollapsed ? "→" : "←"}
+        {isMobileLayout ? (isNavCollapsed ? "↓" : "↑") : (isNavCollapsed ? "→" : "←")}
       </button>
 
       <div
@@ -2069,7 +2087,8 @@ const CTDCompiler = ({
           flex: 1,
           display: "flex",
           flexDirection: "column",
-          height: "100vh",
+          height: isMobileLayout ? "auto" : "100dvh",
+          minHeight: isMobileLayout ? "58dvh" : "auto",
           position: "relative"
         }}
       >
@@ -2077,12 +2096,12 @@ const CTDCompiler = ({
         <div style={{
           background: "linear-gradient(to right, #f8fafc, #f1f5f9)",
           borderBottom: "1px solid #e2e8f0",
-          padding: "1.5rem",
+          padding: isMobileLayout ? "1rem" : "1.5rem",
           display: "flex",
-          flexDirection: window.innerWidth <= 768 ? "column" : "row",
+          flexDirection: isMobileLayout ? "column" : "row",
           gap: "1rem",
           justifyContent: "space-between",
-          alignItems: window.innerWidth <= 768 ? "stretch" : "center"
+          alignItems: isMobileLayout ? "stretch" : "center"
         }}>
           <div>
             <h3 style={{ margin: 0, fontSize: "1.25rem", color: "#0b5ed7", fontWeight: "700" }}>CTD Dossier Progress</h3>
@@ -2106,7 +2125,7 @@ const CTDCompiler = ({
           </div>
           <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
             <div style={{
-              width: window.innerWidth <= 768 ? "100%" : "240px",
+              width: isMobileLayout ? "100%" : "240px",
               height: "10px",
               background: "#e2e8f0",
               borderRadius: "10px",
@@ -2222,11 +2241,12 @@ const CTDCompiler = ({
         {(exportError || paymentRequestStatus) && (
           <div style={{
             position: "absolute",
-            top: "1.25rem",
-            right: "1.5rem",
+            top: isMobileLayout ? "0.75rem" : "1.25rem",
+            right: isMobileLayout ? "0.75rem" : "1.5rem",
+            left: isMobileLayout ? "0.75rem" : "auto",
             display: "grid",
             gap: "0.5rem",
-            width: "min(420px, 90vw)",
+            width: isMobileLayout ? "auto" : "min(420px, 90vw)",
             zIndex: 5,
             pointerEvents: "none"
           }}>
@@ -2299,7 +2319,7 @@ const CTDCompiler = ({
         <div style={{ 
           flex: 1, 
           overflowY: "auto",
-          padding: "2rem"
+          padding: isMobileLayout ? "0.75rem" : "2rem"
         }}>
           {showLongPdfTool && (
             <div style={{
@@ -2473,7 +2493,7 @@ const CTDCompiler = ({
                     <div style={{
                       display: "grid",
                       gap: "0.65rem",
-                      gridTemplateColumns: window.innerWidth <= 768 ? "1fr" : "2fr 1fr 1fr auto",
+                      gridTemplateColumns: isMobileLayout ? "1fr" : "2fr 1fr 1fr auto",
                       alignItems: "end",
                       marginBottom: "0.75rem"
                     }}>
@@ -2866,6 +2886,7 @@ const CTDCompiler = ({
               uploadedFile={selectedSectionUploads.primary}
               additionalFiles={selectedSectionUploads.additional}
               apiOption={selectedApiOption}
+              isMobileLayout={isMobileLayout}
             />
           )}
         </div>
