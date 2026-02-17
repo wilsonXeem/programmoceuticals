@@ -16,7 +16,7 @@ const CUSTOM_PACKAGE_CONFIG = {
   id: "custom",
   name: "Custom",
   minCredits: 6,
-  rateNaira: 85000
+  rateNaira: 80000
 };
 
 const getFixedPackageById = (packageId) => {

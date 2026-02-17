@@ -9,8 +9,8 @@ const packages = [
   {
     name: "Custom",
     credits: "6+",
-    amountLabel: "₦85,000 / dossier",
-    description: "For 6+ dossiers, total is calculated automatically at ₦85,000 per dossier."
+    amountLabel: "₦80,000 / dossier",
+    description: "For 6+ dossiers, total is calculated automatically at ₦80,000 per dossier."
   }
 ];
 
@@ -32,7 +32,7 @@ const Pricing = () => {
         <h1>Pricing and Export Packages</h1>
         <p>
           Choose an export package based on your submission pipeline. Custom packages for 6+ dossiers are
-          auto-calculated at ₦85,000 per dossier.
+          auto-calculated at ₦80,000 per dossier.
         </p>
         <div className="pricing-grid">
           {packages.map((pkg) => (
