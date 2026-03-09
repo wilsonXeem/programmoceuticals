@@ -68,7 +68,7 @@ export const validateFileSize = (file, maxSize = 500 * 1024 * 1024, minSize = 0)
 // ZIP file validation
 export const validateZipFile = (file) => {
   validateFileType(file, ['zip']);
-  validateFileSize(file, 500 * 1024 * 1024, 1024); // Max 500MB, Min 1KB
+  validateFileSize(file, 10 * 1024 * 1024 * 1024, 1024); // Max 10GB, Min 1KB
   
   // Additional ZIP-specific validation
   if (!file.name.toLowerCase().endsWith('.zip')) {
@@ -214,7 +214,7 @@ export const validateDossierStructure = (fileTree) => {
 // Batch validation for multiple files
 export const validateFilesBatch = (files, options = {}) => {
   const {
-    maxTotalSize = 1024 * 1024 * 1024, // 1GB total
+    maxTotalSize = 10 * 1024 * 1024 * 1024, // 10GB total
     allowedTypes = [],
     maxFileSize = 100 * 1024 * 1024, // 100MB per file
     maxFileCount = 1000

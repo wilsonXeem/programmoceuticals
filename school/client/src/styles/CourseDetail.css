@@ -120,6 +120,21 @@
   background: rgba(11, 94, 215, 0.08);
 }
 
+.cohort-card.full {
+  opacity: 0.8;
+  border-color: #fca5a5;
+}
+
+.cohort-loading {
+  grid-column: 1 / -1;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 18px;
+  color: #64748b;
+  text-align: center;
+  background: #f8fafc;
+}
+
 .cohort-card h3 {
   font-size: 20px;
   font-weight: 600;

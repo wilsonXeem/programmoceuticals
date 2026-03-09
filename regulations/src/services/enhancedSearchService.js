@@ -1,62 +1,126 @@
 import mammoth from 'mammoth';
 import Fuse from 'fuse.js';
-import lunr from 'lunr';
 import { documentAnalysisService } from './documentAnalysisService';
 import { searchCacheService } from './searchCacheService';
+
+const SEARCHABLE_EXTENSIONS = new Set(['pdf', 'doc', 'docx', 'txt']);
+const MAX_INDEXABLE_FILE_SIZE = 75 * 1024 * 1024; // 75MB per document for content extraction
+const MAX_INDEXED_TEXT_LENGTH = 250000;
+const PDF_INDEX_MAX_PAGES = 50;
+const INDEX_BATCH_SIZE = 2;
+const MAX_SUGGESTIONS = 10;
+const INDEX_SCHEMA_VERSION = 2;
+
+const normalizeText = (value = '') => value.toLowerCase();
+const yieldToMainThread = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 class EnhancedSearchService {
   constructor() {
     this.searchIndex = null;
+    this.fuzzyIndex = null;
+    this.fuzzyThreshold = 0.3;
     this.documents = [];
     this.isIndexing = false;
+    this.indexSignature = null;
+  }
+
+  getExtension(fileName = '') {
+    return fileName.toLowerCase().split('.').pop();
+  }
+
+  canIndexContent(file) {
+    const extension = this.getExtension(file.name || file.filename);
+    if (!SEARCHABLE_EXTENSIONS.has(extension)) {
+      return false;
+    }
+
+    const fileSize = Number(file.size || 0);
+    return fileSize <= MAX_INDEXABLE_FILE_SIZE;
+  }
+
+  truncateText(text = '') {
+    if (text.length <= MAX_INDEXED_TEXT_LENGTH) {
+      return text;
+    }
+
+    return text.slice(0, MAX_INDEXED_TEXT_LENGTH);
   }
 
   async extractTextFromFile(file, fileBlob) {
-    const ext = file.name.toLowerCase().split('.').pop();
-    
+    const fileName = file.name || file.filename || '';
+    const ext = this.getExtension(fileName);
+
     try {
       switch (ext) {
-        case 'pdf':
-          return await documentAnalysisService.extractTextFromPDF(URL.createObjectURL(fileBlob));
-        
+        case 'pdf': {
+          const blobUrl = URL.createObjectURL(fileBlob);
+          try {
+            const text = await documentAnalysisService.extractTextFromPDF(blobUrl, {
+              maxPages: PDF_INDEX_MAX_PAGES,
+              maxChars: MAX_INDEXED_TEXT_LENGTH,
+            });
+            return this.truncateText(text);
+          } finally {
+            URL.revokeObjectURL(blobUrl);
+          }
+        }
+
         case 'docx':
-        case 'doc':
+        case 'doc': {
           const result = await mammoth.extractRawText({ arrayBuffer: await fileBlob.arrayBuffer() });
-          return result.value;
-        
-        case 'txt':
-          return await fileBlob.text();
-        
+          return this.truncateText(result.value || '');
+        }
+
+        case 'txt': {
+          const text = await fileBlob.slice(0, MAX_INDEXED_TEXT_LENGTH).text();
+          return this.truncateText(text);
+        }
+
         default:
           return '';
       }
     } catch (error) {
-      console.error(`Failed to extract text from ${file.name}:`, error);
+      console.error(`Failed to extract text from ${fileName}:`, error);
       return '';
     }
   }
 
   async getFileText(file, getFileBlob) {
-    const fileHash = searchCacheService.generateFileHash(file);
-    
+    if (!this.canIndexContent(file)) {
+      return '';
+    }
+
+    const fileHash = `${INDEX_SCHEMA_VERSION}:${searchCacheService.generateFileHash(file)}`;
+    const filePath = file.path || '';
+    const normalizedFile = { ...file, name: file.name || file.filename || '' };
+
     // Try cache first
-    let text = await searchCacheService.getExtractedText(file.path, fileHash);
-    if (text !== null) {
-      return text;
+    let text = null;
+    try {
+      text = await searchCacheService.getExtractedText(filePath, fileHash);
+      if (text !== null) {
+        return this.truncateText(text);
+      }
+    } catch (error) {
+      console.warn(`Search cache read failed for ${filePath}:`, error);
     }
 
     // Extract and cache
     try {
-      const fileData = await getFileBlob(file.path);
+      const fileData = await getFileBlob(filePath);
       if (fileData?.blob) {
-        text = await this.extractTextFromFile(file, fileData.blob);
-        await searchCacheService.storeExtractedText(file.path, text, fileHash);
+        text = await this.extractTextFromFile(normalizedFile, fileData.blob);
+        try {
+          await searchCacheService.storeExtractedText(filePath, text, fileHash);
+        } catch (cacheWriteError) {
+          console.warn(`Search cache write failed for ${filePath}:`, cacheWriteError);
+        }
         return text;
       }
     } catch (error) {
-      console.error(`Failed to get file text for ${file.path}:`, error);
+      console.error(`Failed to get file text for ${filePath}:`, error);
     }
-    
+
     return '';
   }
 
@@ -65,162 +129,246 @@ class EnhancedSearchService {
     return match ? `Module ${match[1]}` : 'Unknown';
   }
 
-  async buildSearchIndex(files, getFileBlob, onProgress) {
-    this.isIndexing = true;
-    this.documents = [];
-    
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      
-      if (onProgress) {
-        onProgress({ current: i + 1, total: files.length, file: file.name });
+  getFilesSignature(files) {
+    let hash = 2166136261;
+
+    files.forEach((file) => {
+      const signaturePart = `${file.path || ''}|${file.size || 0}|${file.lastModified || 0}`;
+      for (let i = 0; i < signaturePart.length; i++) {
+        hash ^= signaturePart.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
       }
-
-      const content = await this.getFileText(file, getFileBlob);
-      
-      const doc = {
-        id: file.path,
-        filename: file.name,
-        path: file.path,
-        module: this.extractModuleFromPath(file.path),
-        extension: file.name.split('.').pop().toLowerCase(),
-        content: content,
-        size: file.size || 0
-      };
-      
-      this.documents.push(doc);
-    }
-
-    // Build Lunr index
-    const documents = this.documents;
-    this.searchIndex = lunr(function() {
-      this.field('filename', { boost: 10 });
-      this.field('path', { boost: 5 });
-      this.field('module', { boost: 8 });
-      this.field('content');
-      this.ref('id');
-      
-      documents.forEach(doc => this.add(doc));
     });
 
-    this.isIndexing = false;
-    return this.searchIndex;
+    return `${INDEX_SCHEMA_VERSION}:${files.length}:${hash >>> 0}`;
+  }
+
+  createDocumentRecord(file) {
+    const filename = file.name || file.filename || '';
+    const extension = this.getExtension(filename);
+    const path = file.path || '';
+    const module = this.extractModuleFromPath(path);
+
+    return {
+      id: path,
+      filename,
+      path,
+      module,
+      extension,
+      size: file.size || 0,
+      content: '',
+      filenameLower: normalizeText(filename),
+      pathLower: normalizeText(path),
+      moduleLower: normalizeText(module),
+      contentLower: '',
+    };
+  }
+
+  buildFuzzyIndex(threshold = 0.3) {
+    this.fuzzyThreshold = threshold;
+    this.fuzzyIndex = new Fuse(this.documents, {
+      keys: [
+        { name: 'filename', weight: 0.45 },
+        { name: 'path', weight: 0.25 },
+        { name: 'module', weight: 0.2 },
+        { name: 'content', weight: 0.1 },
+      ],
+      threshold,
+      includeScore: true,
+      includeMatches: true,
+      ignoreLocation: true,
+      minMatchCharLength: 2,
+    });
+
+    // Keep legacy field name for compatibility where callers check readiness.
+    this.searchIndex = this.fuzzyIndex;
+  }
+
+  async buildSearchIndex(files, getFileBlob, onProgress) {
+    const signature = this.getFilesSignature(files);
+    if (this.indexSignature === signature && this.documents.length === files.length) {
+      if (onProgress) {
+        onProgress({ current: files.length, total: files.length, file: 'Search index reused' });
+      }
+      return this.searchIndex;
+    }
+
+    this.isIndexing = true;
+    this.documents = files.map((file) => this.createDocumentRecord(file));
+    this.fuzzyIndex = null;
+
+    const indexableDocuments = this.documents.filter((doc) => this.canIndexContent(doc));
+    const totalIndexable = indexableDocuments.length;
+    let processed = 0;
+
+    if (totalIndexable === 0 && onProgress) {
+      onProgress({ current: 0, total: 0, file: '' });
+    }
+
+    try {
+      for (let i = 0; i < indexableDocuments.length; i += INDEX_BATCH_SIZE) {
+        const batch = indexableDocuments.slice(i, i + INDEX_BATCH_SIZE);
+        const batchResults = await Promise.all(
+          batch.map(async (doc) => {
+            const content = await this.getFileText(doc, getFileBlob);
+            return { doc, content };
+          })
+        );
+
+        batchResults.forEach(({ doc, content }) => {
+          doc.content = content;
+          doc.contentLower = normalizeText(content);
+          processed += 1;
+
+          if (onProgress) {
+            onProgress({
+              current: processed,
+              total: totalIndexable,
+              file: doc.filename,
+            });
+          }
+        });
+
+        await yieldToMainThread();
+      }
+
+      this.buildFuzzyIndex();
+      this.indexSignature = signature;
+      return this.searchIndex;
+    } finally {
+      this.isIndexing = false;
+    }
+  }
+
+  enrichResult(doc, queryLower) {
+    const firstMatchIndex = doc.contentLower.indexOf(queryLower);
+    let context = '';
+    let matchCount = 0;
+
+    if (firstMatchIndex !== -1) {
+      let cursor = firstMatchIndex;
+      while (cursor !== -1) {
+        matchCount += 1;
+        cursor = doc.contentLower.indexOf(queryLower, cursor + queryLower.length);
+      }
+
+      const start = Math.max(0, firstMatchIndex - 50);
+      const end = Math.min(doc.content.length, firstMatchIndex + queryLower.length + 50);
+      context = doc.content.slice(start, end);
+    }
+
+    return {
+      id: doc.id,
+      filename: doc.filename,
+      path: doc.path,
+      module: doc.module,
+      extension: doc.extension,
+      content: doc.content,
+      size: doc.size,
+      matchCount,
+      context,
+      score: doc.score,
+      matches: doc.matches,
+    };
   }
 
   searchContent(query, options = {}) {
     const {
       searchType = 'fuzzy', // 'exact', 'fuzzy', 'lunr'
       fuzzyThreshold = 0.3,
-      maxResults = 50
+      maxResults = 50,
     } = options;
 
-    if (!query.trim()) return [];
+    const queryLower = normalizeText(query.trim());
+    if (!queryLower) {
+      return [];
+    }
 
     let results = [];
 
     switch (searchType) {
-      case 'exact':
-        results = this.documents.filter(doc => 
-          doc.filename.toLowerCase().includes(query.toLowerCase()) ||
-          doc.path.toLowerCase().includes(query.toLowerCase()) ||
-          doc.content.toLowerCase().includes(query.toLowerCase())
-        );
-        break;
+      case 'fuzzy': {
+        if (!this.fuzzyIndex || this.fuzzyThreshold !== fuzzyThreshold) {
+          this.buildFuzzyIndex(fuzzyThreshold);
+        }
 
-      case 'fuzzy':
-        const fuse = new Fuse(this.documents, {
-          keys: [
-            { name: 'filename', weight: 0.4 },
-            { name: 'path', weight: 0.2 },
-            { name: 'module', weight: 0.3 },
-            { name: 'content', weight: 0.1 }
-          ],
-          threshold: fuzzyThreshold,
-          includeScore: true,
-          includeMatches: true
-        });
-        
-        const fuseResults = fuse.search(query);
-        results = fuseResults.map(result => ({
+        const fuseResults = this.fuzzyIndex.search(queryLower, { limit: maxResults });
+        results = fuseResults.map((result) => ({
           ...result.item,
           score: result.score,
-          matches: result.matches
+          matches: result.matches,
         }));
         break;
-
-      case 'lunr':
-        if (this.searchIndex) {
-          const lunrResults = this.searchIndex.search(query);
-          results = lunrResults.map(result => {
-            const doc = this.documents.find(d => d.id === result.ref);
-            return { ...doc, score: result.score };
-          });
-        }
-        break;
-    }
-
-    // Add match counts and context
-    results = results.map(doc => {
-      const content = doc.content.toLowerCase();
-      const queryLower = query.toLowerCase();
-      const matches = (content.match(new RegExp(queryLower, 'g')) || []).length;
-      
-      // Extract context snippet
-      const index = content.indexOf(queryLower);
-      let context = '';
-      if (index !== -1) {
-        const start = Math.max(0, index - 50);
-        const end = Math.min(content.length, index + query.length + 50);
-        context = doc.content.substring(start, end);
       }
 
-      return {
-        ...doc,
-        matchCount: matches,
-        context: context
-      };
-    });
+      case 'lunr':
+      case 'exact':
+      default: {
+        const metadataMatches = [];
+        const contentMatches = [];
 
-    return results.slice(0, maxResults);
+        for (const doc of this.documents) {
+          const hasMetadataMatch =
+            doc.filenameLower.includes(queryLower) ||
+            doc.pathLower.includes(queryLower) ||
+            doc.moduleLower.includes(queryLower);
+          const hasContentMatch = doc.contentLower.includes(queryLower);
+
+          if (!hasMetadataMatch && !hasContentMatch) {
+            continue;
+          }
+
+          if (hasMetadataMatch) {
+            metadataMatches.push(doc);
+          } else {
+            contentMatches.push(doc);
+          }
+
+          if (metadataMatches.length + contentMatches.length >= maxResults * 3) {
+            break;
+          }
+        }
+
+        results = [...metadataMatches, ...contentMatches].slice(0, maxResults);
+        break;
+      }
+    }
+
+    return results.map((doc) => this.enrichResult(doc, queryLower)).slice(0, maxResults);
   }
 
   getSearchSuggestions(query) {
-    if (!query.trim() || query.length < 2) return [];
+    const queryLower = normalizeText(query.trim());
+    if (!queryLower || queryLower.length < 2) {
+      return [];
+    }
 
     const suggestions = new Set();
-    const queryLower = query.toLowerCase();
-
-    this.documents.forEach(doc => {
-      // Add filename suggestions
-      if (doc.filename.toLowerCase().includes(queryLower)) {
+    for (const doc of this.documents) {
+      if (doc.filenameLower.includes(queryLower)) {
         suggestions.add(doc.filename);
       }
-      
-      // Add module suggestions
-      if (doc.module.toLowerCase().includes(queryLower)) {
+
+      if (doc.moduleLower.includes(queryLower)) {
         suggestions.add(doc.module);
       }
 
-      // Add content word suggestions
-      const words = doc.content.toLowerCase().split(/\s+/);
-      words.forEach(word => {
-        if (word.includes(queryLower) && word.length > 3) {
-          suggestions.add(word);
-        }
-      });
-    });
+      if (suggestions.size >= MAX_SUGGESTIONS) {
+        break;
+      }
+    }
 
-    return Array.from(suggestions).slice(0, 10);
+    return Array.from(suggestions);
   }
 
   filterByFileType(results, extensions) {
     if (!extensions || extensions.length === 0) return results;
-    return results.filter(doc => extensions.includes(doc.extension));
+    return results.filter((doc) => extensions.includes(doc.extension));
   }
 
   filterByModule(results, modules) {
     if (!modules || modules.length === 0) return results;
-    return results.filter(doc => modules.includes(doc.module));
+    return results.filter((doc) => modules.includes(doc.module));
   }
 }
 

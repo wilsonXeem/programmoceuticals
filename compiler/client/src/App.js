@@ -19,6 +19,8 @@ import Pricing from "./pages/Pricing";
 import AdminDashboard from "./pages/AdminDashboard";
 import Home from "./pages/Home";
 import Contact from "./pages/Contact";
+import QISTemplate from "./pages/QISTemplate";
+import QOSTemplate from "./pages/QOSTemplate";
 import "./App.css";
 
 const PublicLayout = () => {
@@ -139,12 +141,14 @@ const WorkspaceLayout = () => {
             </button>
           </div>
 
-          <div className={`workspace-nav-collapse ${isWorkspaceMenuOpen ? "is-open" : ""}`}>
-            <div className="workspace-links">
-              <Link to="/app">Compiler</Link>
-              <Link to="/manual">Manual</Link>
-              <Link to="/pricing">Pricing</Link>
-            </div>
+            <div className={`workspace-nav-collapse ${isWorkspaceMenuOpen ? "is-open" : ""}`}>
+              <div className="workspace-links">
+                <Link to="/app">Compiler</Link>
+                <Link to="/qis-template">QIS Template</Link>
+                <Link to="/qos-template">QOS Template</Link>
+                <Link to="/manual">Manual</Link>
+                <Link to="/pricing">Pricing</Link>
+              </div>
             <div className="workspace-nav-right">
               {user ? (
                 <>
@@ -213,6 +217,8 @@ const AppRoutes = () => {
       <Route element={<ProtectedWorkspaceLayout />}>
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/account" element={<Account />} />
+        <Route path="/qis-template" element={<QISTemplate />} />
+        <Route path="/qos-template" element={<QOSTemplate />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

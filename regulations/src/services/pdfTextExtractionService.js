@@ -1,7 +1,7 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Configure PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js';
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
 
 class PDFTextExtractionService {
   constructor() {

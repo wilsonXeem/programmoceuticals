@@ -29,8 +29,8 @@ export const DossierProvider = ({ children }) => {
         // Folder upload
         dossierData = await dossierService.parseFolder(fileOrFiles, onProgress);
       } else {
-        // ZIP file upload
-        dossierData = await dossierService.parseZipFile(fileOrFiles, onProgress);
+        // Archive upload (ZIP/RAR)
+        dossierData = await dossierService.parseArchiveFile(fileOrFiles, onProgress);
       }
       setDossier(dossierData);
       

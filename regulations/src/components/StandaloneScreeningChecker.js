@@ -275,7 +275,7 @@ const StandaloneScreeningChecker = () => {
     setResults(null);
 
     try {
-      const dossierData = await dossierService.parseZipFile(file);
+      const dossierData = await dossierService.parseArchiveFile(file);
       setDossier(dossierData);
       
       const allFiles = flattenFiles(dossierData.root);
@@ -286,7 +286,7 @@ const StandaloneScreeningChecker = () => {
       setResults(checkResults);
     } catch (error) {
       console.error('Error processing dossier:', error);
-      prompt.alert("Error processing dossier. Please ensure it's a valid ZIP file.");
+      prompt.alert("Error processing dossier. Please ensure it's a valid ZIP or RAR archive.");
     } finally {
       setLoading(false);
     }
@@ -302,7 +302,7 @@ const StandaloneScreeningChecker = () => {
     event.preventDefault();
     setDragOver(false);
     const file = event.dataTransfer.files[0];
-    if (file && file.name.endsWith('.zip')) {
+    if (file && /\.(zip|rar)$/i.test(file.name)) {
       await processFile(file);
     }
   };
@@ -370,7 +370,7 @@ const StandaloneScreeningChecker = () => {
             }}>
             <input
               type="file"
-              accept=".zip"
+              accept=".zip,.rar"
               onChange={handleFileUpload}
               style={{ display: 'none' }}
               id="dossier-upload"
@@ -390,10 +390,10 @@ const StandaloneScreeningChecker = () => {
                 cursor: 'pointer'
               }}
             >
-              📁 Upload Dossier ZIP File
+              📁 Upload Dossier Archive
             </label>
             <p style={{ marginTop: '1rem', color: '#666', fontSize: '0.9rem' }}>
-              {dragOver ? 'Drop ZIP file here' : 'Upload your complete dossier as a ZIP file or drag & drop here'}
+              {dragOver ? 'Drop archive here' : 'Upload your complete dossier as a ZIP/RAR archive or drag & drop here'}
             </p>
           </div>
 

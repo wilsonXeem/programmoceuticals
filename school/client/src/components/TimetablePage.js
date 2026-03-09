@@ -1,7 +1,7 @@
 import React from "react";
 import "../styles/Homepage.css";
 import "../styles/Pages.css";
-import { courses } from "../data/courses";
+import { courses as localCourses } from "../data/courses";
 
 const timetableSlots = [
   [
@@ -21,7 +21,8 @@ const timetableSlots = [
   ],
 ];
 
-const TimetablePage = () => {
+const TimetablePage = ({ courses: providedCourses }) => {
+  const courses = providedCourses?.length ? providedCourses : localCourses;
   return (
     <div className="homepage">
       <nav className="navbar scrolled">
@@ -34,6 +35,7 @@ const TimetablePage = () => {
             <a href="#/courses">Courses</a>
             <a href="#/my-courses">My Courses</a>
             <a href="#/timetable">Timetable</a>
+            <a href="#/certificate-verify">Verify Certificate</a>
           </div>
         </div>
       </nav>

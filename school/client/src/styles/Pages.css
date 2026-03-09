@@ -151,8 +151,71 @@
   font-size: 13px;
 }
 
+.verify-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.verify-card {
+  max-width: 760px;
+}
+
+.verify-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.verify-form input {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+  padding: 11px 12px;
+  color: #1f2937;
+}
+
+.verify-error {
+  margin: 8px 0 0;
+  color: #b42318;
+  font-size: 14px;
+}
+
+.verify-result {
+  max-width: 760px;
+}
+
+.verify-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+}
+
+.verify-grid p {
+  margin: 4px 0 0;
+  color: #1f2937;
+}
+
+.verify-ok {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.verify-fail {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 @media (max-width: 768px) {
   .timetable-list {
+    grid-template-columns: 1fr;
+  }
+
+  .verify-form {
+    grid-template-columns: 1fr;
+  }
+
+  .verify-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -694,6 +757,33 @@
 
 .interests-panel .page-actions {
   margin-top: 16px;
+}
+
+.application-payment-panel {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.application-payment-panel input,
+.application-payment-panel textarea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 9px 10px;
+  font-size: 13px;
+  color: #1f2937;
+  font-family: inherit;
+}
+
+.application-payment-panel textarea {
+  resize: vertical;
+}
+
+.application-payment-instructions {
+  margin-top: 14px;
 }
 
 .course-outline .outline-link {

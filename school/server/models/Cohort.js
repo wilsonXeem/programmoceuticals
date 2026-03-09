@@ -22,6 +22,12 @@ const cohortSchema = new mongoose.Schema({
     type: Number,
     default: 25
   },
+  duration_weeks: {
+    type: Number,
+    default: 12,
+    min: 1,
+    max: 52
+  },
   enrolled_students: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'

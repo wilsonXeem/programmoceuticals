@@ -7,8 +7,13 @@ const courseSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ['basic', 'programming'],
+    enum: ['basic', 'programming', 'Basic Skills', 'Programming Languages'],
     required: true
+  },
+  level: {
+    type: String,
+    enum: ['Beginner', 'Intermediate', 'Advanced'],
+    default: 'Beginner'
   },
   description: {
     type: String,
@@ -23,9 +28,39 @@ const courseSchema = new mongoose.Schema({
     type: Number,
     default: 12
   },
+  objectives: {
+    type: [String],
+    default: []
+  },
+  outline: {
+    type: [String],
+    default: []
+  },
+  color: {
+    type: String,
+    default: '#0b5ed7'
+  },
+  icon_key: {
+    type: String,
+    default: ''
+  },
+  preview_percent: {
+    type: Number,
+    min: 1,
+    max: 100,
+    default: 20
+  },
+  sort_order: {
+    type: Number,
+    default: 100
+  },
+  is_published: {
+    type: Boolean,
+    default: true
+  },
   price: {
     type: Number,
-    required: true
+    default: 0
   },
   created_at: {
     type: Date,
@@ -33,7 +68,6 @@ const courseSchema = new mongoose.Schema({
   }
 });
 
-// Set price based on category before saving
 courseSchema.pre('save', function(next) {
   if (!this.slug && this.title) {
     this.slug = this.title
@@ -41,12 +75,14 @@ courseSchema.pre('save', function(next) {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)+/g, '');
   }
-  if (this.category === 'basic') {
-    this.price = 100000;
-  } else if (this.category === 'programming') {
-    this.price = 150000;
+  if (!this.icon_key) {
+    this.icon_key = this.slug;
   }
-  this.duration_weeks = 12;
+  this.preview_percent = Math.min(100, Math.max(1, this.preview_percent || 20));
+  this.duration_weeks = Math.min(
+    52,
+    Math.max(1, Number(this.duration_weeks) || 12)
+  );
   next();
 });
 

@@ -9,6 +9,7 @@ import { enhancedSearchService } from '../services/enhancedSearchService';
 import { searchCacheService } from '../services/searchCacheService';
 import { performanceMonitor } from '../services/performanceMonitor';
 import { intelligentCacheService } from '../services/intelligentCacheService';
+import { sanitizeHtml } from '../utils/htmlSanitizer';
 import DossierTree from "./DossierTree";
 import EnhancedPDFViewer from './EnhancedPDFViewer';
 import VirtualizedFileList from './VirtualizedFileList';
@@ -382,7 +383,8 @@ const Review = () => {
                     });
                   })
                 });
-                setWordContent(prev => new Map(prev).set(filePath, result.value));
+                const safeHtml = sanitizeHtml(result.value);
+                setWordContent(prev => new Map(prev).set(filePath, safeHtml));
               } catch (wordError) {
                 console.error("Failed to convert Word document:", wordError);
               }

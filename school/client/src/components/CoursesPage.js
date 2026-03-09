@@ -1,17 +1,18 @@
 import React, { useState } from "react";
 import "../styles/Homepage.css";
 import "../styles/Pages.css";
-import { courses } from "../data/courses";
+import { courses as localCourses } from "../data/courses";
 import CohortTrainingModal from "./CohortTrainingModal";
 
-const CoursesPage = () => {
+const CoursesPage = ({ courses: providedCourses, user }) => {
+  const courses = providedCourses?.length ? providedCourses : localCourses;
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedLevel, setSelectedLevel] = useState('All');
   const [showCohortModal, setShowCohortModal] = useState(false);
   const [cohortCourse, setCohortCourse] = useState(null);
 
-  const categories = ['All', 'Programming Languages', 'Basic Skills'];
-  const levels = ['All', 'Beginner', 'Intermediate', 'Advanced'];
+  const categories = ['All', ...new Set(courses.map((course) => course.category))];
+  const levels = ['All', ...new Set(courses.map((course) => course.level))];
 
   const filteredCourses = courses.filter(course => {
     const categoryMatch = selectedCategory === 'All' || course.category === selectedCategory;
@@ -26,7 +27,7 @@ const CoursesPage = () => {
 
   const handleContinueToCohort = () => {
     setShowCohortModal(false);
-    window.location.hash = '#/my-courses';
+    window.location.hash = user ? '#/my-courses' : '#/';
   };
 
   return (
@@ -41,6 +42,7 @@ const CoursesPage = () => {
             <a href="#/courses" className="active">Courses</a>
             <a href="#/my-courses">My Courses</a>
             <a href="#/timetable">Timetable</a>
+            <a href="#/certificate-verify">Verify Certificate</a>
           </div>
         </div>
       </nav>
@@ -189,7 +191,12 @@ const CoursesPage = () => {
         isOpen={showCohortModal}
         onClose={() => setShowCohortModal(false)}
         onContinue={handleContinueToCohort}
+        user={user}
+        mode="application"
         courseName={cohortCourse?.name}
+        courseSlug={cohortCourse?.id}
+        courseId={cohortCourse?._id}
+        primaryLabel={user ? 'Open My Courses' : 'Back to Home'}
       />
     </div>
   );

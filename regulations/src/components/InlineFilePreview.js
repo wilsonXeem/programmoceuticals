@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useDossier } from "../hooks/useDossier";
 import EnhancedPDFViewer from "./EnhancedPDFViewer";
 import mammoth from "mammoth";
+import { sanitizeHtml } from "../utils/htmlSanitizer";
 
 // Add CSS for spin animation
 const spinKeyframes = `
@@ -83,7 +84,8 @@ const InlineFilePreview = ({ documents, title, onClose }) => {
                 });
               })
             });
-            setWordContent(prev => new Map(prev).set(filePath, result.value));
+            const safeHtml = sanitizeHtml(result.value);
+            setWordContent(prev => new Map(prev).set(filePath, safeHtml));
           } catch (wordError) {
             console.error("Failed to convert Word document:", wordError);
           }

@@ -1,0 +1,15 @@
+{
+  "name": "programmoceuticals-school",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "setup": "bash ./scripts/setup.sh",
+    "sync-env": "bash ./scripts/sync-env.sh",
+    "start": "bash ./scripts/start-dev.sh",
+    "dev": "SCHOOL_SERVER_SCRIPT=dev bash ./scripts/start-dev.sh",
+    "start:server": "npm --prefix ./server run start",
+    "start:server:dev": "npm --prefix ./server run dev",
+    "start:client": "npm --prefix ./client start",
+    "build": "npm --prefix ./client run build"
+  }
+}

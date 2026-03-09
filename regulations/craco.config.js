@@ -1,8 +1,51 @@
-const path = require('path');
-
 module.exports = {
   webpack: {
     configure: (webpackConfig, { env, paths }) => {
+      const nodeUnrarPattern = /[\\/]node_modules[\\/]node-unrar-js[\\/]/;
+      const isSourceMapLoader = (entry) => {
+        if (!entry) {
+          return false;
+        }
+
+        if (typeof entry === 'string') {
+          return entry.includes('source-map-loader');
+        }
+
+        return typeof entry.loader === 'string' && entry.loader.includes('source-map-loader');
+      };
+
+      // node-unrar-js publishes sourcemap references that are not shipped in npm tarballs.
+      (webpackConfig.module?.rules || []).forEach((rule) => {
+        if (rule.enforce !== 'pre') {
+          return;
+        }
+
+        const uses = Array.isArray(rule.use) ? rule.use : rule.use ? [rule.use] : [];
+        if (!isSourceMapLoader(rule.loader) && !uses.some(isSourceMapLoader)) {
+          return;
+        }
+
+        if (!rule.exclude) {
+          rule.exclude = [nodeUnrarPattern];
+          return;
+        }
+
+        if (Array.isArray(rule.exclude)) {
+          rule.exclude.push(nodeUnrarPattern);
+          return;
+        }
+
+        rule.exclude = [rule.exclude, nodeUnrarPattern];
+      });
+
+      webpackConfig.ignoreWarnings = [
+        ...(webpackConfig.ignoreWarnings || []),
+        (warning) =>
+          typeof warning?.message === 'string' &&
+          warning.message.includes('Failed to parse source map') &&
+          warning.message.includes('node-unrar-js'),
+      ];
+
       // Only apply optimizations in production
       if (env === 'production') {
         // Enhanced code splitting

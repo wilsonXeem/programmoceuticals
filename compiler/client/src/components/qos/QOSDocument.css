@@ -1,0 +1,36 @@
+@media print {
+  .screen-only {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: "Times New Roman", serif;
+  }
+
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  .qos-page-break {
+    page-break-after: always;
+    break-after: page;
+    height: 0;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+.screen-only {
+  display: block;
+}
+
+.print-only {
+  display: none;
+}

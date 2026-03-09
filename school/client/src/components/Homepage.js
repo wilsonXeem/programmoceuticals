@@ -3,15 +3,23 @@ import "../styles/Homepage.css";
 import SignUp from "./SignUp";
 import Login from "./Login";
 import CohortTrainingModal from "./CohortTrainingModal";
-import { courses } from "../data/courses";
+import { courses as localCourses } from "../data/courses";
 
-function Homepage({ onLanguageSelect, onViewCohorts, onViewDashboard, user, setUser }) {
+function Homepage({
+  courses: providedCourses,
+  onLanguageSelect,
+  onViewCohorts,
+  onViewDashboard,
+  user,
+  setUser,
+}) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [showSignUp, setShowSignUp] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [showCohortModal, setShowCohortModal] = useState(false);
   const [cohortCourse, setCohortCourse] = useState(null);
+  const courseList = providedCourses?.length ? providedCourses : localCourses;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -58,6 +66,7 @@ function Homepage({ onLanguageSelect, onViewCohorts, onViewDashboard, user, setU
             <a href="#/courses">Courses</a>
             <a href="#/my-courses">My Courses</a>
             <a href="#/timetable">Timetable</a>
+            <a href="#/certificate-verify">Verify Certificate</a>
           </div>
 
           <div className="nav-auth">
@@ -103,6 +112,7 @@ function Homepage({ onLanguageSelect, onViewCohorts, onViewDashboard, user, setU
             <a href="#/courses">Courses</a>
             <a href="#/my-courses">My Courses</a>
             <a href="#/timetable">Timetable</a>
+            <a href="#/certificate-verify">Verify Certificate</a>
             <button type="button" className="mobile-login" onClick={() => setShowLogin(true)}>
               Log in
             </button>
@@ -140,7 +150,7 @@ function Homepage({ onLanguageSelect, onViewCohorts, onViewDashboard, user, setU
               <button
                 type="button"
                 className="secondary-btn"
-                onClick={() => openCohortModal(courses[0])}
+                onClick={() => openCohortModal(courseList[0])}
               >
                 <i className="fa-solid fa-graduation-cap"></i> Join Paid Cohort
               </button>
@@ -240,7 +250,7 @@ function Homepage({ onLanguageSelect, onViewCohorts, onViewDashboard, user, setU
           </div>
 
           <div className="language-grid">
-            {courses.slice(0, 3).map((lang) => (
+            {courseList.slice(0, 3).map((lang) => (
               <div
                 key={lang.id}
                 className="language-card"
@@ -315,7 +325,7 @@ function Homepage({ onLanguageSelect, onViewCohorts, onViewDashboard, user, setU
               <h3>Instructor-led pathway</h3>
               <p>Live sessions, assignments, and mentor review are available in paid cohorts.</p>
             </div>
-            <button type="button" className="outline-link" onClick={() => openCohortModal(courses[0])}>
+            <button type="button" className="outline-link" onClick={() => openCohortModal(courseList[0])}>
               View cohort options
             </button>
           </div>
@@ -439,6 +449,9 @@ function Homepage({ onLanguageSelect, onViewCohorts, onViewDashboard, user, setU
                 <li>
                   <a href="#/">Home</a>
                 </li>
+                <li>
+                  <a href="#/certificate-verify">Verify Certificate</a>
+                </li>
               </ul>
             </div>
 
@@ -500,11 +513,17 @@ function Homepage({ onLanguageSelect, onViewCohorts, onViewDashboard, user, setU
         isOpen={showCohortModal}
         onClose={() => setShowCohortModal(false)}
         onContinue={handleContinueToCohort}
+        user={user}
+        mode="application"
         courseName={cohortCourse?.name}
+        courseSlug={cohortCourse?.id}
+        courseId={cohortCourse?._id}
+        primaryLabel={user ? "View Cohort Options" : "Log In to Continue"}
       />
       
       {showSignUp && (
         <SignUp 
+          courses={courseList}
           onClose={() => setShowSignUp(false)}
           onSwitchToLogin={() => {
             setShowSignUp(false);

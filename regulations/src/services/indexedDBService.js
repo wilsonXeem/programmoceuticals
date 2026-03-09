@@ -166,6 +166,88 @@ class IndexedDBService {
     }
   }
 
+  async createDossier(dossierData) {
+    if (!this.db) await this.init();
+
+    const dossierId = Date.now().toString();
+    const transaction = this.db.transaction(['dossiers', 'pathIndex'], 'readwrite');
+
+    await Promise.all([
+      this.promisifyRequest(
+        transaction.objectStore('dossiers').put({
+          id: dossierId,
+          name: dossierData.name,
+          root: dossierData.root,
+          createdAt: new Date().toISOString()
+        })
+      ),
+      this.promisifyRequest(
+        transaction.objectStore('pathIndex').put({
+          dossierId,
+          paths: {}
+        })
+      )
+    ]);
+
+    return dossierId;
+  }
+
+  async appendFilesToDossier(dossierId, files, options = {}) {
+    if (!this.db) await this.init();
+    if (!Array.isArray(files) || files.length === 0) return;
+
+    const {
+      compress = true,
+      batchSize = 25
+    } = options;
+
+    for (let i = 0; i < files.length; i += batchSize) {
+      const batch = files.slice(i, i + batchSize);
+
+      const processedBatch = await Promise.all(
+        batch.map(async (file) => {
+          let storedBlob = file.blob;
+          let isCompressed = false;
+
+          if (compress) {
+            const { blob: compressedBlob, compressed } = await this.compressBlob(file.blob);
+            storedBlob = compressedBlob;
+            isCompressed = compressed;
+          }
+
+          return {
+            path: file.path,
+            dossierId,
+            blob: storedBlob,
+            originalSize: file.size,
+            compressedSize: storedBlob.size,
+            type: file.type,
+            compressed: isCompressed
+          };
+        })
+      );
+
+      const fileTx = this.db.transaction(['files'], 'readwrite');
+      const fileStore = fileTx.objectStore('files');
+
+      await Promise.all(
+        processedBatch.map((fileData) => this.promisifyRequest(fileStore.put(fileData)))
+      );
+    }
+  }
+
+  async savePathIndex(dossierId, paths) {
+    if (!this.db) await this.init();
+
+    const tx = this.db.transaction(['pathIndex'], 'readwrite');
+    await this.promisifyRequest(
+      tx.objectStore('pathIndex').put({
+        dossierId,
+        paths: paths || {}
+      })
+    );
+  }
+
   async getCachedDossier() {
     if (!this.db) await this.init();
     

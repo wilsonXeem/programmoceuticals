@@ -304,9 +304,9 @@ const ProgressivePDFViewer = ({ fileUrl, zoom, onZoomChange, fileName }) => {
             setLoadingProgress((loaded / total) * 100);
           }}
           options={{
-            cMapUrl: 'https://unpkg.com/pdfjs-dist@3.11.174/cmaps/',
+            cMapUrl: '/cmaps/',
             cMapPacked: true,
-            standardFontDataUrl: 'https://unpkg.com/pdfjs-dist@3.11.174/standard_fonts/'
+            standardFontDataUrl: '/standard_fonts/'
           }}
           loading={
             <div style={{ padding: '2rem' }}>

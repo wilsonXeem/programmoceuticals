@@ -348,7 +348,7 @@ const EnhancedPDFViewer = ({ fileUrl, height = '70vh', autoHighlightTerms = [] }
           background: 'white',
           paddingBottom: '20px'
         }}>
-          <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
+          <Worker workerUrl="/pdf.worker.min.js">
             <Viewer 
               fileUrl={fileUrl} 
               plugins={[searchPluginInstance, toolbarPluginInstance, fullScreenPluginInstance, rotatePluginInstance]}

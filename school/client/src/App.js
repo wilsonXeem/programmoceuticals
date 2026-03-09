@@ -14,6 +14,8 @@ import TimetablePage from "./components/TimetablePage";
 import PricingPage from "./components/PricingPage";
 import CourseOutlinePage from "./components/CourseOutlinePage";
 import MyCoursesPage from "./components/MyCoursesPage";
+import CertificateVerifyPage from "./components/CertificateVerifyPage";
+import { cohortsAPI, coursesAPI } from "./services/api";
 import "./styles/Challenge.css";
 import "./styles/ChallengeLanding.css";
 import { slidesData } from "./data/slidesData";
@@ -31,7 +33,87 @@ import { sqlSlidesData } from "./data/sqlSlidesData";
 import { networkingSlidesData } from "./data/networkingSlidesData";
 import { mongodbSlidesData } from "./data/mongodbSlidesData";
 import { angularjsSlidesData } from "./data/angularjsSlidesData";
-import { courses } from "./data/courses";
+import { courses as localCourses } from "./data/courses";
+
+const localCourseMap = new Map(localCourses.map((course) => [course.id, course]));
+
+const mergeCourseCatalog = (apiCourses, hasFullAccess) => {
+  if (!Array.isArray(apiCourses) || apiCourses.length === 0) {
+    return localCourses.map((course) => ({
+      ...course,
+      access: {
+        previewPercent: 20,
+        fullAccessRequiresAuth: true,
+        hasFullAccess,
+      },
+      payment: {
+        learning: "free",
+        certification: "paid",
+        cohortTraining: "paid",
+      },
+    }));
+  }
+
+  const merged = apiCourses.map((apiCourse) => {
+    const slug = apiCourse.id || apiCourse.slug;
+    const localCourse = localCourseMap.get(slug);
+    const previewPercent = Number(apiCourse?.access?.previewPercent) || 20;
+    return {
+      ...localCourse,
+      ...apiCourse,
+      id: slug || localCourse?.id,
+      slug: slug || apiCourse.slug || localCourse?.id,
+      name: apiCourse.name || apiCourse.title || localCourse?.name,
+      title: apiCourse.title || apiCourse.name || localCourse?.name,
+      icon: localCourse?.icon,
+      color: apiCourse.color || localCourse?.color || "#0b5ed7",
+      category:
+        apiCourse.category || localCourse?.category || "Programming Languages",
+      level: apiCourse.level || localCourse?.level || "Beginner",
+      duration:
+        apiCourse.duration ||
+        localCourse?.duration ||
+        `${apiCourse.durationWeeks || 12} weeks`,
+      objectives:
+        apiCourse.objectives?.length > 0
+          ? apiCourse.objectives
+          : localCourse?.objectives || [],
+      outline:
+        apiCourse.outline?.length > 0
+          ? apiCourse.outline
+          : localCourse?.outline || [],
+      access: {
+        previewPercent,
+        fullAccessRequiresAuth: true,
+        hasFullAccess,
+      },
+      payment: {
+        learning: "free",
+        certification: "paid",
+        cohortTraining: "paid",
+      },
+    };
+  });
+
+  const apiIds = new Set(merged.map((course) => course.id));
+  const localOnly = localCourses
+    .filter((course) => !apiIds.has(course.id))
+    .map((course) => ({
+      ...course,
+      access: {
+        previewPercent: 20,
+        fullAccessRequiresAuth: true,
+        hasFullAccess,
+      },
+      payment: {
+        learning: "free",
+        certification: "paid",
+        cohortTraining: "paid",
+      },
+    }));
+
+  return [...merged, ...localOnly];
+};
 
 function App() {
   const [selectedLanguage, setSelectedLanguage] = useState(null);
@@ -47,6 +129,8 @@ function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [route, setRoute] = useState("home");
+  const [courseCatalog, setCourseCatalog] = useState(localCourses);
+  const [slidesByCourse, setSlidesByCourse] = useState({});
 
   useEffect(() => {
     // Check for existing token on app load
@@ -60,6 +144,36 @@ function App() {
       }
     }
     setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const url = new URL(window.location.href);
+    const searchReference =
+      url.searchParams.get("reference") || url.searchParams.get("trxref");
+
+    const hash = String(window.location.hash || "");
+    const [hashPath, hashQuery = ""] = hash.split("?");
+    const hashParams = new URLSearchParams(hashQuery);
+    const hashReference =
+      hashParams.get("reference") || hashParams.get("trxref");
+
+    if (!searchReference && !hashReference) {
+      return;
+    }
+
+    if (url.pathname && url.pathname !== "/" && url.pathname !== "/index.html") {
+      const normalized = `/${url.search}${url.hash}`;
+      window.history.replaceState({}, "", normalized);
+    }
+
+    const hashRoute = hashPath.startsWith("#/") ? hashPath.slice(2) : "";
+    if (hashRoute !== "my-courses") {
+      window.location.hash = "#/my-courses";
+    }
   }, []);
 
   useEffect(() => {
@@ -97,6 +211,22 @@ function App() {
   ]);
 
   useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        const hasFullAccess = Boolean(user?.id);
+        const backendCourses = await coursesAPI.list();
+        setCourseCatalog(mergeCourseCatalog(backendCourses, hasFullAccess));
+      } catch (error) {
+        setCourseCatalog(
+          mergeCourseCatalog([], Boolean(user?.id))
+        );
+      }
+    };
+
+    loadCourses();
+  }, [user]);
+
+  useEffect(() => {
     if (route.startsWith("course/")) {
       const courseId = route.split("/")[1];
       setSelectedLanguage(courseId || null);
@@ -109,6 +239,29 @@ function App() {
       setShowAdminDashboard(false);
     }
   }, [route]);
+
+  useEffect(() => {
+    const loadSlides = async () => {
+      if (!selectedLanguage) {
+        return;
+      }
+
+      try {
+        const response = await coursesAPI.getSlidesBySlug(selectedLanguage);
+        setSlidesByCourse((prev) => ({
+          ...prev,
+          [selectedLanguage]: response,
+        }));
+      } catch (error) {
+        setSlidesByCourse((prev) => ({
+          ...prev,
+          [selectedLanguage]: null,
+        }));
+      }
+    };
+
+    loadSlides();
+  }, [selectedLanguage, user]);
 
   const handleLanguageSelect = (language) => {
     if (language === "challenge") {
@@ -149,13 +302,28 @@ function App() {
   };
 
   const getCourseData = (language) => {
-    return courses.find((course) => course.id === language) || courses[0];
+    return (
+      courseCatalog.find((course) => course.id === language) ||
+      courseCatalog[0] ||
+      localCourses[0]
+    );
   };
 
-  const handleEnrollInCourse = (cohortId) => {
+  const handleEnrollInCourse = async (cohortId) => {
     const courseId = selectedCourse?.id;
     if (!cohortId || !courseId) {
       return;
+    }
+    if (user?.id) {
+      try {
+        await cohortsAPI.enroll(cohortId);
+      } catch (error) {
+        const message = error?.response?.data?.message || "Enrollment failed.";
+        if (!/already enrolled/i.test(message)) {
+          alert(message);
+          return;
+        }
+      }
     }
     window.location.hash = `#/course/${courseId}`;
     setSelectedLanguage(courseId);
@@ -186,6 +354,11 @@ function App() {
   };
 
   const getCurrentSlidesData = () => {
+    const backendSlides = slidesByCourse[selectedLanguage]?.slides;
+    if (Array.isArray(backendSlides) && backendSlides.length > 0) {
+      return backendSlides;
+    }
+
     switch (selectedLanguage) {
       case "python":
         return slidesData;
@@ -222,6 +395,52 @@ function App() {
     }
   };
 
+  const getAccessPolicy = (language) => {
+    const backendAccess = slidesByCourse[language]?.access;
+    if (backendAccess) {
+      return {
+        previewPercent: Number(backendAccess.previewPercent) || 20,
+        hasFullAccess: Boolean(backendAccess.hasFullAccess),
+        isPreviewMode: Boolean(backendAccess.isPreviewMode),
+        totalSlides: Number(backendAccess.totalSlides) || 0,
+      };
+    }
+
+    const course = getCourseData(language);
+    const previewPercent = Number(course?.access?.previewPercent) || 20;
+    const hasFullAccess = Boolean(user?.id);
+    const totalSlides = getCurrentSlidesData().length;
+    return {
+      previewPercent,
+      hasFullAccess,
+      isPreviewMode: !hasFullAccess,
+      totalSlides,
+    };
+  };
+
+  const getAccessibleSlidesData = () => {
+    const fullSlides = getCurrentSlidesData();
+    if (!selectedLanguage) {
+      return fullSlides;
+    }
+
+    const backendAccess = slidesByCourse[selectedLanguage]?.access;
+    if (backendAccess) {
+      return fullSlides;
+    }
+
+    const { isPreviewMode, previewPercent } = getAccessPolicy(selectedLanguage);
+    if (!isPreviewMode) {
+      return fullSlides;
+    }
+
+    const previewCount = Math.max(
+      1,
+      Math.ceil((previewPercent / 100) * fullSlides.length)
+    );
+    return fullSlides.slice(0, previewCount);
+  };
+
   if (loading) {
     return (
       <div
@@ -238,20 +457,34 @@ function App() {
   }
 
   if (route === "courses") {
-    return <CoursesPage />;
+    return <CoursesPage courses={courseCatalog} user={user} />;
+  }
+
+  if (route === "certificate-verify" || route.startsWith("certificate-verify/")) {
+    const encoded = route.split("/").slice(1).join("/");
+    let initialCertificateNumber = encoded;
+    try {
+      initialCertificateNumber = decodeURIComponent(encoded);
+    } catch (error) {
+      initialCertificateNumber = encoded;
+    }
+    return (
+      <CertificateVerifyPage initialCertificateNumber={initialCertificateNumber} />
+    );
   }
 
   if (route === "timetable") {
-    return <TimetablePage />;
+    return <TimetablePage courses={courseCatalog} />;
   }
 
   if (route === "pricing") {
-    return <PricingPage />;
+    return <PricingPage courses={courseCatalog} user={user} />;
   }
 
   if (route === "my-courses") {
     return (
       <MyCoursesPage
+        courses={courseCatalog}
         user={user}
         onBack={() => {
           setShowStudentDashboard(true);
@@ -267,7 +500,7 @@ function App() {
 
   if (route.startsWith("course-outline/")) {
     const courseId = route.split("/")[1];
-    return <CourseOutlinePage courseId={courseId} />;
+    return <CourseOutlinePage courseId={courseId} courses={courseCatalog} user={user} />;
   }
 
   return (
@@ -276,6 +509,7 @@ function App() {
         <CurriculumPage />
       ) : showHomepage ? (
         <Homepage
+          courses={courseCatalog}
           onLanguageSelect={handleLanguageSelect}
           onViewCohorts={handleViewCohorts}
           onViewDashboard={() => {
@@ -295,6 +529,7 @@ function App() {
         />
       ) : showStudentDashboard ? (
         <StudentDashboard
+          courses={courseCatalog}
           user={user}
           onContinueCourse={(courseId) => {
             window.location.hash = `#/course/${courseId}`;
@@ -311,6 +546,7 @@ function App() {
       ) : showCourseDetail ? (
         <CourseDetail
           course={selectedCourse}
+          user={user}
           onBack={handleBackToHome}
           onEnroll={handleEnrollInCourse}
         />
@@ -342,12 +578,25 @@ function App() {
           onBackToChallenges={handleBackToChallenges}
         />
       ) : (
+        (() => {
+          const fullSlidesData = getCurrentSlidesData();
+          const accessibleSlidesData = getAccessibleSlidesData();
+          const { isPreviewMode, previewPercent, totalSlides } = getAccessPolicy(
+            selectedLanguage
+          );
+
+          return (
         <Course
           language={selectedLanguage}
-          slidesData={getCurrentSlidesData()}
+          slidesData={accessibleSlidesData}
+          totalCourseSlides={totalSlides || fullSlidesData.length}
+          isPreviewMode={isPreviewMode}
+          previewPercent={previewPercent}
           onBackToHome={handleBackToHome}
           user={user}
         />
+          );
+        })()
       )}
     </div>
   );

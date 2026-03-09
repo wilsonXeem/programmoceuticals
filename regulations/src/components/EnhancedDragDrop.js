@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 
 const EnhancedDragDrop = ({ 
   onFilesSelected, 
-  acceptedTypes = ['.pdf', '.doc', '.docx', '.zip'], 
+  acceptedTypes = ['.pdf', '.doc', '.docx', '.zip', '.rar'], 
   maxFileSize = 50 * 1024 * 1024,
   multiple = false,
   children 

@@ -216,7 +216,7 @@ const Home = () => {
                   lineHeight: "1.5",
                 }}
               >
-                Upload pharmaceutical dossier ZIP file for assessment
+                Upload pharmaceutical dossier ZIP/RAR archive for assessment
               </p>
             </div>
             <div

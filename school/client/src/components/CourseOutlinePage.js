@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import "../styles/Homepage.css";
 import "../styles/Pages.css";
-import { courses } from "../data/courses";
+import { courses as localCourses } from "../data/courses";
 import CohortTrainingModal from "./CohortTrainingModal";
 
-const CourseOutlinePage = ({ courseId }) => {
+const CourseOutlinePage = ({ courseId, courses: providedCourses, user }) => {
+  const courses = providedCourses?.length ? providedCourses : localCourses;
   const course = courses.find((item) => item.id === courseId);
   const [showCohortModal, setShowCohortModal] = useState(false);
 
@@ -53,6 +54,7 @@ const CourseOutlinePage = ({ courseId }) => {
           <a href="#/courses">Courses</a>
           <a href="#/my-courses">My Courses</a>
           <a href="#/timetable">Timetable</a>
+          <a href="#/certificate-verify">Verify Certificate</a>
         </div>
         </div>
       </nav>
@@ -180,9 +182,14 @@ const CourseOutlinePage = ({ courseId }) => {
         onClose={() => setShowCohortModal(false)}
         onContinue={() => {
           setShowCohortModal(false);
-          window.location.hash = "#/my-courses";
+          window.location.hash = user ? "#/my-courses" : "#/";
         }}
+        user={user}
+        mode="application"
         courseName={course.name}
+        courseSlug={course.id}
+        courseId={course._id}
+        primaryLabel={user ? "Open My Courses" : "Back to Home"}
       />
     </div>
   );

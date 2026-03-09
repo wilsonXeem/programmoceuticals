@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import '../styles/Auth.css';
 import { authAPI } from '../services/api';
-import { courses } from '../data/courses';
+import { courses as localCourses } from '../data/courses';
 
-const SignUp = ({ onClose, onSwitchToLogin, setUser }) => {
+const SignUp = ({ courses: providedCourses, onClose, onSwitchToLogin, setUser }) => {
+  const courseList = providedCourses?.length ? providedCourses : localCourses;
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -127,7 +128,7 @@ const SignUp = ({ onClose, onSwitchToLogin, setUser }) => {
           <div className="course-selection">
             <h3>Select courses you are interested in</h3>
             <div className="courses-grid">
-              {courses.map((course) => (
+              {courseList.map((course) => (
                 <label key={course.id} className="course-checkbox">
                   <input
                     type="checkbox"

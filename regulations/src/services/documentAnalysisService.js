@@ -5,12 +5,16 @@ class DocumentAnalysisService {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL}/pdf.worker.min.js`;
   }
 
-  async extractTextFromPDF(fileUrl) {
+  async extractTextFromPDF(fileUrl, options = {}) {
+    const maxPages = Number.isFinite(options.maxPages) ? Math.max(1, options.maxPages) : Number.POSITIVE_INFINITY;
+    const maxChars = Number.isFinite(options.maxChars) ? Math.max(1, options.maxChars) : Number.POSITIVE_INFINITY;
+
     try {
       const pdf = await pdfjsLib.getDocument(fileUrl).promise;
       let fullText = '';
-      
-      for (let i = 1; i <= pdf.numPages; i++) {
+      const totalPages = Math.min(pdf.numPages, maxPages);
+
+      for (let i = 1; i <= totalPages; i++) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
         
@@ -31,6 +35,10 @@ class DocumentAnalysisService {
         });
         
         fullText += pageText + '\n';
+
+        if (fullText.length >= maxChars) {
+          return fullText.slice(0, maxChars);
+        }
       }
       
       return fullText;

@@ -29,6 +29,146 @@ const ensurePdfWorkerConfigured = () => {
   pdfWorkerConfigured = true;
 };
 
+const DOC_STUDIO_LETTERHEAD_KEY = "ctd-doc-studio-letterhead-v1";
+const DOC_STUDIO_DRAFT_PREFIX = "ctd-doc-studio-draft-v1";
+
+const escapeHtml = (value) =>
+  String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const sanitizeDocumentFileBase = (value) => {
+  const cleaned = String(value || "document")
+    .replace(/[\\/]/g, "-")
+    .replace(/[:*?"<>|]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned || "document";
+};
+
+const isClient = typeof window !== "undefined";
+
+const sanitizeRichHtml = (rawHtml) => {
+  const html = String(rawHtml || "");
+  if (!isClient) {
+    return html;
+  }
+
+  const parser = new window.DOMParser();
+  const doc = parser.parseFromString(`<div>${html}</div>`, "text/html");
+  const root = doc.body.firstElementChild;
+  if (!root) return "";
+
+  root.querySelectorAll("script,style,iframe,object,embed,link,meta").forEach((node) => {
+    node.remove();
+  });
+
+  root.querySelectorAll("*").forEach((el) => {
+    Array.from(el.attributes).forEach((attr) => {
+      const name = attr.name.toLowerCase();
+      const value = String(attr.value || "").toLowerCase();
+      if (name.startsWith("on")) {
+        el.removeAttribute(attr.name);
+      } else if ((name === "href" || name === "src") && value.startsWith("javascript:")) {
+        el.removeAttribute(attr.name);
+      } else if (name === "style") {
+        el.removeAttribute(attr.name);
+      }
+    });
+  });
+
+  return root.innerHTML;
+};
+
+const htmlHasVisibleText = (rawHtml) => {
+  const html = String(rawHtml || "").trim();
+  if (!html) return false;
+  if (!isClient) {
+    return html.replace(/<[^>]*>/g, "").trim().length > 0;
+  }
+  const parser = new window.DOMParser();
+  const doc = parser.parseFromString(`<div>${html}</div>`, "text/html");
+  const text = String(doc.body.textContent || "").replace(/\u00a0/g, " ").trim();
+  return text.length > 0;
+};
+
+const toParagraphHtml = (value) => {
+  const chunks = String(value || "")
+    .split(/\n{2,}/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (chunks.length === 0) {
+    return `<p style="margin:0 0 14px 0;">&nbsp;</p>`;
+  }
+  return chunks
+    .map((chunk) => `<p style="margin:0 0 14px 0;">${escapeHtml(chunk).replace(/\n/g, "<br />")}</p>`)
+    .join("");
+};
+
+const normalizeStudioBodyHtml = (rawHtml) => {
+  const sanitized = sanitizeRichHtml(rawHtml);
+  if (!htmlHasVisibleText(sanitized)) {
+    return `<p style="margin:0 0 14px 0;">&nbsp;</p>`;
+  }
+  return sanitized;
+};
+
+const buildStudioWordHtml = ({
+  title,
+  subtitle,
+  bodyHtml,
+  signOff,
+  signerName,
+  signerRole,
+  letterheadDataUrl,
+  includeLetterhead
+}) => {
+  const hasLetterhead = includeLetterhead && String(letterheadDataUrl || "").trim();
+  const pageStyle = hasLetterhead
+    ? `background-image:url('${letterheadDataUrl}'); background-repeat:no-repeat; background-size:100% auto; background-position:top center;`
+    : "";
+
+  return `<!doctype html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>${escapeHtml(title || "Document")}</title>
+    <!--[if gte mso 9]>
+    <xml>
+      <w:WordDocument>
+        <w:View>Print</w:View>
+        <w:Zoom>100</w:Zoom>
+      </w:WordDocument>
+    </xml>
+    <![endif]-->
+    <style>
+      @page { size: A4; margin: 25.4mm 20mm; }
+      body { margin: 0; padding: 0; font-family: "Times New Roman", serif; color: #111111; font-size: 12pt; line-height: 1.5; background: #ffffff; }
+      .doc-page { min-height: 270mm; padding: 0; ${pageStyle} }
+      .doc-title { text-align: center; font-size: 14pt; font-weight: 700; margin: 0 0 12pt 0; }
+      .doc-subtitle { text-align: center; font-size: 11pt; font-weight: 600; margin: 0 0 18pt 0; }
+      .doc-signoff { margin-top: 24pt; }
+      .doc-signer { font-weight: 700; margin-top: 16pt; }
+      .doc-role { margin-top: 2pt; }
+    </style>
+  </head>
+  <body>
+    <div class="doc-page">
+      <h1 class="doc-title">${escapeHtml(title || "Untitled Document")}</h1>
+      ${subtitle ? `<div class="doc-subtitle">${escapeHtml(subtitle)}</div>` : ""}
+      ${normalizeStudioBodyHtml(bodyHtml)}
+      ${signOff ? `<p class="doc-signoff">${escapeHtml(signOff)}</p>` : ""}
+      ${signerName ? `<p class="doc-signer">${escapeHtml(signerName)}</p>` : ""}
+      ${signerRole ? `<p class="doc-role">${escapeHtml(signerRole)}</p>` : ""}
+    </div>
+  </body>
+</html>`;
+};
+
 const UploadInterface = ({
   section,
   onFileUpload,
@@ -36,7 +176,9 @@ const UploadInterface = ({
   uploadedFile,
   additionalFiles = [],
   apiOption,
-  isMobileLayout = false
+  isMobileLayout = false,
+  onOpenQisTemplate,
+  onOpenQosTemplate
 }) => {
   const requirement = mapRequirementsToNode(section.path, apiOption, section.requirementKey);
   const sectionRules = getSectionRules(section.path, requirement, section.requirementKey);
@@ -47,6 +189,22 @@ const UploadInterface = ({
   const [uploadError, setUploadError] = useState('');
   const [isDragOver, setIsDragOver] = useState(false);
   const [uploadMode, setUploadMode] = useState('primary');
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState("upload");
+  const [studioTitle, setStudioTitle] = useState(section.name || "");
+  const [studioSubtitle, setStudioSubtitle] = useState("");
+  const [studioBodyHtml, setStudioBodyHtml] = useState("<p></p>");
+  const [studioSignOff, setStudioSignOff] = useState("Kind regards,");
+  const [studioSignerName, setStudioSignerName] = useState("");
+  const [studioSignerRole, setStudioSignerRole] = useState("");
+  const [studioUseLetterhead, setStudioUseLetterhead] = useState(true);
+  const [studioLetterhead, setStudioLetterhead] = useState({ name: "", dataUrl: "" });
+  const [studioStatus, setStudioStatus] = useState("");
+  const [studioError, setStudioError] = useState("");
+  const letterheadInputRef = useRef(null);
+  const studioEditorRef = useRef(null);
+  const sectionDraftStorageKey = `${DOC_STUDIO_DRAFT_PREFIX}:${section.path}`;
+  const isQisSection = section.path === "/ctd/module1/1.4/1.4.2";
+  const isQosSection = section.path === "/ctd/module2/2.3";
   const cardPadding = isMobileLayout ? "1rem" : "2rem";
   const sectionPadding = isMobileLayout ? "0.75rem" : "1rem";
   const sectionMargin = isMobileLayout ? "0.75rem" : "1rem";
@@ -54,6 +212,10 @@ const UploadInterface = ({
   const primaryButtonPadding = isMobileLayout ? "0.6rem 0.9rem" : "0.75rem 1.1rem";
   const secondaryButtonPadding = isMobileLayout ? "0.6rem 0.9rem" : "0.75rem 1.1rem";
   const buttonFontSize = isMobileLayout ? "0.84rem" : "0.9rem";
+  const allowedExtensions = Array.isArray(sectionRules?.allowedExtensions)
+    ? sectionRules.allowedExtensions
+    : [];
+  const studioWordSupported = allowedExtensions.length === 0 || allowedExtensions.includes("doc");
 
   const hasAnyUploadedFile = Boolean(uploadedFile) || additionalFiles.length > 0;
 
@@ -64,6 +226,122 @@ const UploadInterface = ({
       }
     };
   }, [previewUrl]);
+
+  useEffect(() => {
+    setActiveWorkspaceTab("upload");
+    setStudioStatus("");
+    setStudioError("");
+    if (!isClient) return;
+    try {
+      const raw = window.localStorage.getItem(sectionDraftStorageKey);
+      if (!raw) {
+        setStudioTitle(section.name || "");
+        setStudioSubtitle("");
+        setStudioBodyHtml("<p></p>");
+        setStudioSignOff("Kind regards,");
+        setStudioSignerName("");
+        setStudioSignerRole("");
+        setStudioUseLetterhead(true);
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      setStudioTitle(String(parsed?.title || section.name || ""));
+      setStudioSubtitle(String(parsed?.subtitle || ""));
+      setStudioBodyHtml(normalizeStudioBodyHtml(parsed?.bodyHtml || "<p></p>"));
+      setStudioSignOff(String(parsed?.signOff || "Kind regards,"));
+      setStudioSignerName(String(parsed?.signerName || ""));
+      setStudioSignerRole(String(parsed?.signerRole || ""));
+      setStudioUseLetterhead(parsed?.useLetterhead !== false);
+    } catch {
+      setStudioTitle(section.name || "");
+      setStudioSubtitle("");
+      setStudioBodyHtml("<p></p>");
+      setStudioSignOff("Kind regards,");
+      setStudioSignerName("");
+      setStudioSignerRole("");
+      setStudioUseLetterhead(true);
+    }
+  }, [section.path, section.name, sectionDraftStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(DOC_STUDIO_LETTERHEAD_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object" && parsed.dataUrl) {
+        setStudioLetterhead({
+          name: String(parsed.name || "letterhead"),
+          dataUrl: String(parsed.dataUrl || "")
+        });
+      }
+    } catch {
+      // Ignore malformed saved letterhead data.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
+    const timer = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(
+          sectionDraftStorageKey,
+          JSON.stringify({
+            title: studioTitle,
+            subtitle: studioSubtitle,
+            bodyHtml: sanitizeRichHtml(studioBodyHtml),
+            signOff: studioSignOff,
+            signerName: studioSignerName,
+            signerRole: studioSignerRole,
+            useLetterhead: studioUseLetterhead,
+            updatedAt: Date.now()
+          })
+        );
+      } catch {
+        // Ignore draft persistence failures.
+      }
+    }, 250);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [
+    sectionDraftStorageKey,
+    studioTitle,
+    studioSubtitle,
+    studioBodyHtml,
+    studioSignOff,
+    studioSignerName,
+    studioSignerRole,
+    studioUseLetterhead
+  ]);
+
+  useEffect(() => {
+    const editor = studioEditorRef.current;
+    if (!editor) return;
+    const sanitized = normalizeStudioBodyHtml(studioBodyHtml);
+    if (editor.innerHTML !== sanitized) {
+      editor.innerHTML = sanitized;
+    }
+  }, [studioBodyHtml, activeWorkspaceTab]);
+
+  const persistLetterhead = (nextValue) => {
+    if (typeof window === "undefined") return;
+    try {
+      if (!nextValue?.dataUrl) {
+        window.localStorage.removeItem(DOC_STUDIO_LETTERHEAD_KEY);
+        return;
+      }
+      window.localStorage.setItem(
+        DOC_STUDIO_LETTERHEAD_KEY,
+        JSON.stringify({
+          name: String(nextValue.name || "letterhead"),
+          dataUrl: String(nextValue.dataUrl || "")
+        })
+      );
+    } catch {
+      // Ignore local storage write failures.
+    }
+  };
 
   const toggleRequirement = (index) => {
     const newCheckedItems = new Set(checkedItems);
@@ -160,6 +438,210 @@ const UploadInterface = ({
     setUploadMode('primary');
   };
 
+  const handleStudioLetterheadChange = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!String(file.type || "").startsWith("image/")) {
+      setStudioError("Letterhead must be an image file.");
+      setStudioStatus("");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || "");
+      if (!dataUrl) return;
+      const nextLetterhead = { name: file.name, dataUrl };
+      setStudioLetterhead(nextLetterhead);
+      persistLetterhead(nextLetterhead);
+      setStudioError("");
+      setStudioStatus("Letterhead updated for this browser.");
+    };
+    reader.onerror = () => {
+      setStudioError("Could not read the selected letterhead image.");
+      setStudioStatus("");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearStudioLetterhead = () => {
+    const nextLetterhead = { name: "", dataUrl: "" };
+    setStudioLetterhead(nextLetterhead);
+    persistLetterhead(nextLetterhead);
+    setStudioStatus("Letterhead removed.");
+    setStudioError("");
+  };
+
+  const createStudioFile = () => {
+    const normalizedTitle = String(studioTitle || "").trim();
+    const normalizedBodyHtml = normalizeStudioBodyHtml(studioBodyHtml);
+    if (!normalizedTitle) {
+      setStudioError("Document title is required.");
+      setStudioStatus("");
+      return null;
+    }
+    if (!htmlHasVisibleText(normalizedBodyHtml)) {
+      setStudioError("Document body is required.");
+      setStudioStatus("");
+      return null;
+    }
+
+    const html = buildStudioWordHtml({
+      title: normalizedTitle,
+      subtitle: studioSubtitle,
+      bodyHtml: normalizedBodyHtml,
+      signOff: studioSignOff,
+      signerName: studioSignerName,
+      signerRole: studioSignerRole,
+      letterheadDataUrl: studioLetterhead.dataUrl,
+      includeLetterhead: studioUseLetterhead
+    });
+    const fileName = `${sanitizeDocumentFileBase(normalizedTitle)}.doc`;
+    const blob = new Blob([html], { type: "application/msword" });
+    const file = new File([blob], fileName, {
+      type: "application/msword",
+      lastModified: Date.now()
+    });
+    return file;
+  };
+
+  const saveStudioDocumentToSection = (mode = "primary") => {
+    const file = createStudioFile();
+    if (!file) return;
+
+    const validation = validateFileForSection({
+      file,
+      nodePath: section.path,
+      requirement,
+      requirementKey: section.requirementKey
+    });
+    if (!validation.ok) {
+      setStudioError(validation.message);
+      setStudioStatus("");
+      return;
+    }
+
+    const documentRequirements = getDocumentRequirements({
+      fileName: file.name,
+      rules: sectionRules
+    });
+    const attestations = documentRequirements.reduce((acc, req) => {
+      acc[req.id] = true;
+      return acc;
+    }, {});
+
+    onFileUpload(file, section.path, attestations, { mode });
+    setStudioError("");
+    setUploadError("");
+    setStudioStatus(
+      mode === "primary"
+        ? "Document Studio file saved as the main section file."
+        : "Document Studio file saved as an additional section file."
+    );
+  };
+
+  const downloadStudioDocument = () => {
+    const file = createStudioFile();
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = file.name;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setStudioError("");
+    setStudioStatus("Document downloaded as Word (.doc).");
+  };
+
+  const applyEditorCommand = (command, value = null) => {
+    if (!studioEditorRef.current) return;
+    studioEditorRef.current.focus();
+    document.execCommand(command, false, value);
+    setStudioBodyHtml(sanitizeRichHtml(studioEditorRef.current.innerHTML));
+  };
+
+  const handleStudioEditorInput = (event) => {
+    setStudioBodyHtml(sanitizeRichHtml(event.currentTarget.innerHTML));
+  };
+
+  const clearStudioDraft = () => {
+    setStudioTitle(section.name || "");
+    setStudioSubtitle("");
+    setStudioBodyHtml("<p></p>");
+    setStudioSignOff("Kind regards,");
+    setStudioSignerName("");
+    setStudioSignerRole("");
+    setStudioUseLetterhead(true);
+    setStudioError("");
+    setStudioStatus("Draft cleared for this section.");
+    if (isClient) {
+      try {
+        window.localStorage.removeItem(sectionDraftStorageKey);
+      } catch {
+        // Ignore local storage failures.
+      }
+    }
+  };
+
+  const printStudioAsPdf = () => {
+    const file = createStudioFile();
+    if (!file) return;
+    const html = buildStudioWordHtml({
+      title: studioTitle,
+      subtitle: studioSubtitle,
+      bodyHtml: normalizeStudioBodyHtml(studioBodyHtml),
+      signOff: studioSignOff,
+      signerName: studioSignerName,
+      signerRole: studioSignerRole,
+      letterheadDataUrl: studioLetterhead.dataUrl,
+      includeLetterhead: studioUseLetterhead
+    });
+
+    try {
+      const frame = document.createElement("iframe");
+      frame.style.position = "fixed";
+      frame.style.width = "0";
+      frame.style.height = "0";
+      frame.style.border = "0";
+      frame.style.opacity = "0";
+      frame.setAttribute("aria-hidden", "true");
+      document.body.appendChild(frame);
+
+      const cleanup = () => {
+        window.setTimeout(() => {
+          if (frame.parentNode) frame.parentNode.removeChild(frame);
+        }, 600);
+      };
+
+      frame.onload = () => {
+        window.setTimeout(() => {
+          try {
+            frame.contentWindow?.focus();
+            frame.contentWindow?.print();
+          } finally {
+            cleanup();
+          }
+        }, 120);
+      };
+
+      const doc = frame.contentDocument || frame.contentWindow?.document;
+      if (!doc) {
+        cleanup();
+        setStudioError("Could not open print preview for PDF.");
+        setStudioStatus("");
+        return;
+      }
+      doc.open();
+      doc.write(html);
+      doc.close();
+      setStudioError("");
+      setStudioStatus("Print dialog opened. Select Save as PDF.");
+    } catch {
+      setStudioError("Could not open print dialog for PDF.");
+      setStudioStatus("");
+    }
+  };
+
   return (
     <div style={{ maxWidth: "90vw", margin: "0 auto" }}>
       <div style={{
@@ -169,6 +651,92 @@ const UploadInterface = ({
         boxShadow: "0 2px 10px rgba(0,0,0,0.1)"
       }}>
         <h2 style={{ margin: isMobileLayout ? "0 0 0.7rem 0" : "0 0 1rem 0", color: "#0b5ed7" }}>{section.name}</h2>
+
+        {isQisSection && (
+          <div
+            style={{
+              background: "#eff6ff",
+              border: "1px solid #bfdbfe",
+              borderRadius: "8px",
+              padding: isMobileLayout ? "0.75rem" : "0.9rem",
+              marginBottom: sectionLargeMargin,
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "0.6rem"
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: "0.88rem", fontWeight: "600", color: "#1e3a8a" }}>
+                Need the official QIS format?
+              </div>
+              <div style={{ fontSize: "0.8rem", color: "#334155", marginTop: "0.2rem" }}>
+                Open the built-in QIS Template Studio, complete it, and export as Word for section 1.4.2.
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenQisTemplate}
+              style={{
+                background: "#0b5ed7",
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                padding: isMobileLayout ? "0.55rem 0.8rem" : "0.6rem 0.95rem",
+                fontSize: isMobileLayout ? "0.8rem" : "0.84rem",
+                fontWeight: "600",
+                cursor: "pointer",
+                whiteSpace: "nowrap"
+              }}
+            >
+              Open QIS Template Studio
+            </button>
+          </div>
+        )}
+
+        {isQosSection && (
+          <div
+            style={{
+              background: "#eff6ff",
+              border: "1px solid #bfdbfe",
+              borderRadius: "8px",
+              padding: isMobileLayout ? "0.75rem" : "0.9rem",
+              marginBottom: sectionLargeMargin,
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "0.6rem"
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: "0.88rem", fontWeight: "600", color: "#1e3a8a" }}>
+                Need the official QOS format?
+              </div>
+              <div style={{ fontSize: "0.8rem", color: "#334155", marginTop: "0.2rem" }}>
+                Open the built-in QOS Template Studio, complete it, and export as Word for section 2.3.
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenQosTemplate}
+              style={{
+                background: "#0b5ed7",
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                padding: isMobileLayout ? "0.55rem 0.8rem" : "0.6rem 0.95rem",
+                fontSize: isMobileLayout ? "0.8rem" : "0.84rem",
+                fontWeight: "600",
+                cursor: "pointer",
+                whiteSpace: "nowrap"
+              }}
+            >
+              Open QOS Template Studio
+            </button>
+          </div>
+        )}
 
         {requirement && (
           <div style={{
@@ -217,250 +785,544 @@ const UploadInterface = ({
           </div>
         )}
 
-        {uploadError && (
-          <div style={{
-            background: "#fee2e2",
-            border: "1px solid #fecaca",
-            borderRadius: "6px",
-            padding: isMobileLayout ? "0.65rem" : "0.75rem",
-            marginBottom: sectionMargin,
-            color: "#b91c1c",
-            fontSize: isMobileLayout ? "0.84rem" : "0.9rem"
-          }}>
-            {uploadError}
-          </div>
-        )}
-
-        {uploadedFile && !showChecklist ? (
-          <div style={{
-            background: "#d4edda",
-            border: "1px solid #c3e6cb",
-            borderRadius: "6px",
-            padding: sectionPadding,
+        <div
+          style={{
+            display: "flex",
+            gap: "0.6rem",
+            flexWrap: "wrap",
             marginBottom: sectionMargin
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <FontAwesomeIcon icon={faCheck} style={{ color: "#155724" }} />
-              <span style={{ color: "#155724", fontWeight: "500" }}>Main file uploaded</span>
-            </div>
-            <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.9rem", color: "#155724" }}>
-              {uploadedFile.name} ({(uploadedFile.size / 1024).toFixed(1)} KB)
-            </p>
-            <p style={{ margin: "0.4rem 0 0 0", fontSize: "0.8rem", color: "#166534" }}>
-              Export name: section standard name
-            </p>
-          </div>
-        ) : null}
-
-        {additionalFiles.length > 0 && !showChecklist && (
-          <div style={{
-            background: "#eff6ff",
-            border: "1px solid #bfdbfe",
-            borderRadius: "6px",
-            padding: sectionPadding,
-            marginBottom: sectionMargin
-          }}>
-            <div style={{ color: "#1e3a8a", fontWeight: "600", marginBottom: "0.5rem", fontSize: "0.9rem" }}>
-              Additional files ({additionalFiles.length})
-            </div>
-            <div style={{ display: "grid", gap: "0.4rem" }}>
-              {additionalFiles.map((item, index) => (
-                <div
-                  key={item.key}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: "0.5rem",
-                    background: "white",
-                    border: "1px solid #dbeafe",
-                    borderRadius: "6px",
-                    padding: "0.45rem 0.6rem"
-                  }}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: "0.85rem", color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {index + 1}. {item.fileData.name}
-                    </div>
-                    <div style={{ fontSize: "0.75rem", color: "#475569" }}>
-                      Export name: original filename
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => onAdditionalFileRemove?.(item.key)}
-                    style={{
-                      border: "1px solid #fecaca",
-                      background: "#fff1f2",
-                      color: "#b91c1c",
-                      borderRadius: "4px",
-                      fontSize: "0.75rem",
-                      padding: "0.25rem 0.5rem",
-                      cursor: "pointer"
-                    }}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {!showChecklist ? (
-          <div
-            onDragOver={handleDragOver}
-            onDragEnter={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setActiveWorkspaceTab("upload")}
             style={{
-              border: isDragOver ? "2px dashed #0b5ed7" : "2px dashed #d1d5db",
-              borderRadius: "8px",
-              padding: isMobileLayout ? "1rem 0.75rem" : "2rem",
-              textAlign: "center",
-              background: isDragOver ? "#eff6ff" : "#fafafa",
-              transition: "all 0.15s ease"
+              background: activeWorkspaceTab === "upload" ? "#0b5ed7" : "#e2e8f0",
+              color: activeWorkspaceTab === "upload" ? "white" : "#334155",
+              border: "none",
+              borderRadius: "6px",
+              padding: isMobileLayout ? "0.5rem 0.75rem" : "0.55rem 0.85rem",
+              fontSize: isMobileLayout ? "0.8rem" : "0.83rem",
+              fontWeight: "600",
+              cursor: "pointer"
             }}
           >
-            <FontAwesomeIcon
-              icon={faUpload}
-              style={{
-                fontSize: isMobileLayout ? "1.55rem" : "2rem",
-                color: isDragOver ? "#0b5ed7" : "#666",
-                marginBottom: isMobileLayout ? "0.65rem" : "1rem"
-              }}
-            />
-            <p style={{ margin: isMobileLayout ? "0 0 0.6rem 0" : "0 0 1rem 0", color: "#666" }}>
-              {uploadedFile ? "Replace main file or add more files to this section" : "Upload main document for this section"}
-            </p>
-            <p style={{ margin: isMobileLayout ? "0 0 0.65rem 0" : "0 0 1rem 0", color: "#64748b", fontSize: isMobileLayout ? "0.8rem" : "0.85rem" }}>
-              Main file exports with the section name. Additional files keep your filenames.
-            </p>
+            Upload Files
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveWorkspaceTab("studio")}
+            style={{
+              background: activeWorkspaceTab === "studio" ? "#0b5ed7" : "#e2e8f0",
+              color: activeWorkspaceTab === "studio" ? "white" : "#334155",
+              border: "none",
+              borderRadius: "6px",
+              padding: isMobileLayout ? "0.5rem 0.75rem" : "0.55rem 0.85rem",
+              fontSize: isMobileLayout ? "0.8rem" : "0.83rem",
+              fontWeight: "600",
+              cursor: "pointer"
+            }}
+          >
+            Document Studio (Phase 1)
+          </button>
+        </div>
 
-            <input
-              type="file"
-              onChange={handlePrimaryFileChange}
-              style={{ display: "none" }}
-              id={`primary-file-input-${section.path}`}
-              accept=".pdf,.doc,.docx,.xls,.xlsx"
-            />
-            <input
-              type="file"
-              onChange={handleAdditionalFileChange}
-              style={{ display: "none" }}
-              id={`additional-file-input-${section.path}`}
-              accept=".pdf,.doc,.docx,.xls,.xlsx"
-            />
+        {activeWorkspaceTab === "upload" ? (
+          <>
+            {uploadError && (
+              <div style={{
+                background: "#fee2e2",
+                border: "1px solid #fecaca",
+                borderRadius: "6px",
+                padding: isMobileLayout ? "0.65rem" : "0.75rem",
+                marginBottom: sectionMargin,
+                color: "#b91c1c",
+                fontSize: isMobileLayout ? "0.84rem" : "0.9rem"
+              }}>
+                {uploadError}
+              </div>
+            )}
 
-            <div style={{ display: "flex", justifyContent: "center", gap: "0.65rem", flexWrap: "wrap" }}>
-              <label
-                htmlFor={`primary-file-input-${section.path}`}
+            {uploadedFile && !showChecklist ? (
+              <div style={{
+                background: "#d4edda",
+                border: "1px solid #c3e6cb",
+                borderRadius: "6px",
+                padding: sectionPadding,
+                marginBottom: sectionMargin
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <FontAwesomeIcon icon={faCheck} style={{ color: "#155724" }} />
+                  <span style={{ color: "#155724", fontWeight: "500" }}>Main file uploaded</span>
+                </div>
+                <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.9rem", color: "#155724" }}>
+                  {uploadedFile.name} ({(uploadedFile.size / 1024).toFixed(1)} KB)
+                </p>
+                <p style={{ margin: "0.4rem 0 0 0", fontSize: "0.8rem", color: "#166534" }}>
+                  Export name: section standard name
+                </p>
+              </div>
+            ) : null}
+
+            {additionalFiles.length > 0 && !showChecklist && (
+              <div style={{
+                background: "#eff6ff",
+                border: "1px solid #bfdbfe",
+                borderRadius: "6px",
+                padding: sectionPadding,
+                marginBottom: sectionMargin
+              }}>
+                <div style={{ color: "#1e3a8a", fontWeight: "600", marginBottom: "0.5rem", fontSize: "0.9rem" }}>
+                  Additional files ({additionalFiles.length})
+                </div>
+                <div style={{ display: "grid", gap: "0.4rem" }}>
+                  {additionalFiles.map((item, index) => (
+                    <div
+                      key={item.key}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "0.5rem",
+                        background: "white",
+                        border: "1px solid #dbeafe",
+                        borderRadius: "6px",
+                        padding: "0.45rem 0.6rem"
+                      }}
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: "0.85rem", color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {index + 1}. {item.fileData.name}
+                        </div>
+                        <div style={{ fontSize: "0.75rem", color: "#475569" }}>
+                          Export name: original filename
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => onAdditionalFileRemove?.(item.key)}
+                        style={{
+                          border: "1px solid #fecaca",
+                          background: "#fff1f2",
+                          color: "#b91c1c",
+                          borderRadius: "4px",
+                          fontSize: "0.75rem",
+                          padding: "0.25rem 0.5rem",
+                          cursor: "pointer"
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!showChecklist ? (
+              <div
+                onDragOver={handleDragOver}
+                onDragEnter={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
                 style={{
-                  background: "#0b5ed7",
-                  color: "white",
-                  padding: primaryButtonPadding,
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  display: "inline-block",
-                  fontSize: buttonFontSize,
-                  fontWeight: "500"
+                  border: isDragOver ? "2px dashed #0b5ed7" : "2px dashed #d1d5db",
+                  borderRadius: "8px",
+                  padding: isMobileLayout ? "1rem 0.75rem" : "2rem",
+                  textAlign: "center",
+                  background: isDragOver ? "#eff6ff" : "#fafafa",
+                  transition: "all 0.15s ease"
                 }}
               >
-                {uploadedFile ? "Replace Main File" : "Choose Main File"}
-              </label>
-              {uploadedFile && (
-                <label
-                  htmlFor={`additional-file-input-${section.path}`}
+                <FontAwesomeIcon
+                  icon={faUpload}
                   style={{
-                    background: "#e2e8f0",
-                    color: "#0f172a",
-                    padding: secondaryButtonPadding,
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    display: "inline-block",
-                    fontSize: buttonFontSize,
-                    fontWeight: "500"
+                    fontSize: isMobileLayout ? "1.55rem" : "2rem",
+                    color: isDragOver ? "#0b5ed7" : "#666",
+                    marginBottom: isMobileLayout ? "0.65rem" : "1rem"
                   }}
-                >
-                  Add Additional File
-                </label>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div>
-            <div style={{
-              display: "flex",
-              gap: "1rem",
-              marginBottom: isMobileLayout ? "0.55rem" : "0.65rem",
-              justifyContent: "center"
-            }}>
-              <button
-                onClick={handleSaveFile}
-                style={{
-                  background: "#28a745",
-                  color: "white",
-                  border: "none",
-                  padding: isMobileLayout ? "0.65rem 1.1rem" : "0.75rem 1.5rem",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontSize: buttonFontSize,
-                  fontWeight: "600"
-                }}
-              >
-                <FontAwesomeIcon icon={faCheck} /> Save Document
-              </button>
-              <button
-                onClick={handleCancelPreview}
-                style={{
-                  background: "#6c757d",
-                  color: "white",
-                  border: "none",
-                  padding: isMobileLayout ? "0.65rem 0.9rem" : "0.75rem 1rem",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontSize: buttonFontSize
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-
-            <p style={{ margin: "0 0 0.9rem 0", fontSize: "0.82rem", color: "#475569", textAlign: "center" }}>
-              {uploadMode === 'primary'
-                ? 'This will be saved as the main section file (export name follows section title).'
-                : 'This will be saved as an additional file (export name keeps your filename).'}
-            </p>
-
-            <div style={{
-              width: "100%",
-              maxWidth: isMobileLayout ? "100%" : "80vw",
-              background: "white",
-              borderRadius: "8px",
-              height: isMobileLayout ? "62vh" : "80vh",
-              overflow: "auto",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-              margin: "0 auto"
-            }}>
-              {previewFile?.type === 'application/pdf' ? (
-                <SimplePDFViewer
-                  fileUrl={previewUrl}
-                  height={isMobileLayout ? "62vh" : "80vh"}
                 />
-              ) : (
+                <p style={{ margin: isMobileLayout ? "0 0 0.6rem 0" : "0 0 1rem 0", color: "#666" }}>
+                  {uploadedFile ? "Replace main file or add more files to this section" : "Upload main document for this section"}
+                </p>
+                <p style={{ margin: isMobileLayout ? "0 0 0.65rem 0" : "0 0 1rem 0", color: "#64748b", fontSize: isMobileLayout ? "0.8rem" : "0.85rem" }}>
+                  Main file exports with the section name. Additional files keep your filenames.
+                </p>
+
+                <input
+                  type="file"
+                  onChange={handlePrimaryFileChange}
+                  style={{ display: "none" }}
+                  id={`primary-file-input-${section.path}`}
+                  accept=".pdf,.doc,.docx,.xls,.xlsx"
+                />
+                <input
+                  type="file"
+                  onChange={handleAdditionalFileChange}
+                  style={{ display: "none" }}
+                  id={`additional-file-input-${section.path}`}
+                  accept=".pdf,.doc,.docx,.xls,.xlsx"
+                />
+
+                <div style={{ display: "flex", justifyContent: "center", gap: "0.65rem", flexWrap: "wrap" }}>
+                  <label
+                    htmlFor={`primary-file-input-${section.path}`}
+                    style={{
+                      background: "#0b5ed7",
+                      color: "white",
+                      padding: primaryButtonPadding,
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      display: "inline-block",
+                      fontSize: buttonFontSize,
+                      fontWeight: "500"
+                    }}
+                  >
+                    {uploadedFile ? "Replace Main File" : "Choose Main File"}
+                  </label>
+                  {uploadedFile && (
+                    <label
+                      htmlFor={`additional-file-input-${section.path}`}
+                      style={{
+                        background: "#e2e8f0",
+                        color: "#0f172a",
+                        padding: secondaryButtonPadding,
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        display: "inline-block",
+                        fontSize: buttonFontSize,
+                        fontWeight: "500"
+                      }}
+                    >
+                      Add Additional File
+                    </label>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div>
                 <div style={{
                   display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  height: "100%",
-                  flexDirection: "column",
-                  color: "#666",
-                  background: "#f8f9fa"
+                  gap: "1rem",
+                  marginBottom: isMobileLayout ? "0.55rem" : "0.65rem",
+                  justifyContent: "center"
                 }}>
-                  <FontAwesomeIcon icon={faFileAlt} style={{ fontSize: "4rem", marginBottom: "1rem", color: "#0b5ed7" }} />
-                  <h3 style={{ margin: "0 0 0.5rem 0", color: "#0b5ed7" }}>{previewFile?.name}</h3>
-                  <p style={{ fontSize: "0.9rem", margin: 0 }}>Preview not available for this file type</p>
+                  <button
+                    onClick={handleSaveFile}
+                    style={{
+                      background: "#28a745",
+                      color: "white",
+                      border: "none",
+                      padding: isMobileLayout ? "0.65rem 1.1rem" : "0.75rem 1.5rem",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontSize: buttonFontSize,
+                      fontWeight: "600"
+                    }}
+                  >
+                    <FontAwesomeIcon icon={faCheck} /> Save Document
+                  </button>
+                  <button
+                    onClick={handleCancelPreview}
+                    style={{
+                      background: "#6c757d",
+                      color: "white",
+                      border: "none",
+                      padding: isMobileLayout ? "0.65rem 0.9rem" : "0.75rem 1rem",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontSize: buttonFontSize
+                    }}
+                  >
+                    Cancel
+                  </button>
                 </div>
-              )}
+
+                <p style={{ margin: "0 0 0.9rem 0", fontSize: "0.82rem", color: "#475569", textAlign: "center" }}>
+                  {uploadMode === 'primary'
+                    ? 'This will be saved as the main section file (export name follows section title).'
+                    : 'This will be saved as an additional file (export name keeps your filename).'}
+                </p>
+
+                <div style={{
+                  width: "100%",
+                  maxWidth: isMobileLayout ? "100%" : "80vw",
+                  background: "white",
+                  borderRadius: "8px",
+                  height: isMobileLayout ? "62vh" : "80vh",
+                  overflow: "auto",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                  margin: "0 auto"
+                }}>
+                  {previewFile?.type === 'application/pdf' ? (
+                    <SimplePDFViewer
+                      fileUrl={previewUrl}
+                      height={isMobileLayout ? "62vh" : "80vh"}
+                    />
+                  ) : (
+                    <div style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      height: "100%",
+                      flexDirection: "column",
+                      color: "#666",
+                      background: "#f8f9fa"
+                    }}>
+                      <FontAwesomeIcon icon={faFileAlt} style={{ fontSize: "4rem", marginBottom: "1rem", color: "#0b5ed7" }} />
+                      <h3 style={{ margin: "0 0 0.5rem 0", color: "#0b5ed7" }}>{previewFile?.name}</h3>
+                      <p style={{ fontSize: "0.9rem", margin: 0 }}>Preview not available for this file type</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div style={{ display: "grid", gap: sectionMargin }}>
+            <div
+              style={{
+                background: "#f8fafc",
+                border: "1px solid #dbe2ea",
+                borderRadius: "8px",
+                padding: sectionPadding,
+                fontSize: "0.84rem",
+                color: "#334155",
+                lineHeight: 1.5
+              }}
+            >
+              Document Studio lets users draft dossier content directly in this section and export as Word.
+              The uploaded letterhead is saved in this browser and can be reused across sections.
+            </div>
+
+            {!studioWordSupported && (
+              <div
+                style={{
+                  background: "#fff7ed",
+                  border: "1px solid #fdba74",
+                  borderRadius: "8px",
+                  padding: sectionPadding,
+                  fontSize: "0.82rem",
+                  color: "#9a3412"
+                }}
+              >
+                This section currently expects: {allowedExtensions.join(", ").toUpperCase()}. Document Studio output is Word (.doc).
+              </div>
+            )}
+
+            {studioError && (
+              <div
+                style={{
+                  background: "#fee2e2",
+                  border: "1px solid #fecaca",
+                  borderRadius: "6px",
+                  padding: isMobileLayout ? "0.65rem" : "0.75rem",
+                  color: "#b91c1c",
+                  fontSize: isMobileLayout ? "0.84rem" : "0.9rem"
+                }}
+              >
+                {studioError}
+              </div>
+            )}
+
+            {studioStatus && !studioError && (
+              <div
+                style={{
+                  background: "#ecfeff",
+                  border: "1px solid #a5f3fc",
+                  borderRadius: "6px",
+                  padding: isMobileLayout ? "0.65rem" : "0.75rem",
+                  color: "#155e75",
+                  fontSize: isMobileLayout ? "0.84rem" : "0.9rem"
+                }}
+              >
+                {studioStatus}
+              </div>
+            )}
+
+            <div style={{ display: "grid", gap: "0.7rem", gridTemplateColumns: isMobileLayout ? "1fr" : "1fr 1fr" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "0.78rem", color: "#334155", marginBottom: "0.25rem" }}>Document Title</label>
+                <input
+                  type="text"
+                  value={studioTitle}
+                  onChange={(event) => setStudioTitle(event.target.value)}
+                  placeholder={section.name}
+                  style={{ width: "100%", border: "1px solid #cbd5e1", borderRadius: "6px", padding: "0.5rem", fontSize: "0.85rem" }}
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "0.78rem", color: "#334155", marginBottom: "0.25rem" }}>Subtitle / Reference (Optional)</label>
+                <input
+                  type="text"
+                  value={studioSubtitle}
+                  onChange={(event) => setStudioSubtitle(event.target.value)}
+                  placeholder="Reference, dossier number, or heading"
+                  style={{ width: "100%", border: "1px solid #cbd5e1", borderRadius: "6px", padding: "0.5rem", fontSize: "0.85rem" }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: "block", fontSize: "0.78rem", color: "#334155", marginBottom: "0.25rem" }}>Body</label>
+              <div style={{ border: "1px solid #cbd5e1", borderRadius: "6px", overflow: "hidden", background: "white" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem", padding: "0.45rem", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+                  <button type="button" onClick={() => applyEditorCommand("bold")} style={{ border: "1px solid #cbd5e1", background: "white", borderRadius: "4px", padding: "0.2rem 0.45rem", fontSize: "0.76rem", fontWeight: "700", cursor: "pointer" }}>B</button>
+                  <button type="button" onClick={() => applyEditorCommand("italic")} style={{ border: "1px solid #cbd5e1", background: "white", borderRadius: "4px", padding: "0.2rem 0.45rem", fontSize: "0.76rem", fontStyle: "italic", cursor: "pointer" }}>I</button>
+                  <button type="button" onClick={() => applyEditorCommand("underline")} style={{ border: "1px solid #cbd5e1", background: "white", borderRadius: "4px", padding: "0.2rem 0.45rem", fontSize: "0.76rem", textDecoration: "underline", cursor: "pointer" }}>U</button>
+                  <button type="button" onClick={() => applyEditorCommand("insertUnorderedList")} style={{ border: "1px solid #cbd5e1", background: "white", borderRadius: "4px", padding: "0.2rem 0.45rem", fontSize: "0.76rem", cursor: "pointer" }}>• List</button>
+                  <button type="button" onClick={() => applyEditorCommand("insertOrderedList")} style={{ border: "1px solid #cbd5e1", background: "white", borderRadius: "4px", padding: "0.2rem 0.45rem", fontSize: "0.76rem", cursor: "pointer" }}>1. List</button>
+                  <button type="button" onClick={() => applyEditorCommand("formatBlock", "H3")} style={{ border: "1px solid #cbd5e1", background: "white", borderRadius: "4px", padding: "0.2rem 0.45rem", fontSize: "0.76rem", cursor: "pointer" }}>H3</button>
+                  <button type="button" onClick={() => applyEditorCommand("formatBlock", "P")} style={{ border: "1px solid #cbd5e1", background: "white", borderRadius: "4px", padding: "0.2rem 0.45rem", fontSize: "0.76rem", cursor: "pointer" }}>P</button>
+                </div>
+                <div
+                  ref={studioEditorRef}
+                  contentEditable
+                  suppressContentEditableWarning
+                  onInput={handleStudioEditorInput}
+                  style={{ minHeight: isMobileLayout ? "170px" : "220px", padding: "0.6rem", fontSize: "0.9rem", lineHeight: 1.55, outline: "none", whiteSpace: "pre-wrap" }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gap: "0.7rem", gridTemplateColumns: isMobileLayout ? "1fr" : "1fr 1fr 1fr" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "0.78rem", color: "#334155", marginBottom: "0.25rem" }}>Sign-off</label>
+                <input
+                  type="text"
+                  value={studioSignOff}
+                  onChange={(event) => setStudioSignOff(event.target.value)}
+                  placeholder="Kind regards,"
+                  style={{ width: "100%", border: "1px solid #cbd5e1", borderRadius: "6px", padding: "0.5rem", fontSize: "0.85rem" }}
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "0.78rem", color: "#334155", marginBottom: "0.25rem" }}>Signer Name</label>
+                <input
+                  type="text"
+                  value={studioSignerName}
+                  onChange={(event) => setStudioSignerName(event.target.value)}
+                  placeholder="Full name"
+                  style={{ width: "100%", border: "1px solid #cbd5e1", borderRadius: "6px", padding: "0.5rem", fontSize: "0.85rem" }}
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "0.78rem", color: "#334155", marginBottom: "0.25rem" }}>Signer Designation</label>
+                <input
+                  type="text"
+                  value={studioSignerRole}
+                  onChange={(event) => setStudioSignerRole(event.target.value)}
+                  placeholder="Title/role"
+                  style={{ width: "100%", border: "1px solid #cbd5e1", borderRadius: "6px", padding: "0.5rem", fontSize: "0.85rem" }}
+                />
+              </div>
+            </div>
+
+            <div style={{ border: "1px solid #dbe2ea", borderRadius: "8px", padding: sectionPadding, background: "#f8fafc" }}>
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.55rem", marginBottom: "0.5rem" }}>
+                <input
+                  ref={letterheadInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleStudioLetterheadChange}
+                  style={{ display: "none" }}
+                />
+                <button
+                  type="button"
+                  onClick={() => letterheadInputRef.current?.click()}
+                  style={{ border: "1px solid #0b5ed7", color: "#0b5ed7", background: "white", borderRadius: "6px", padding: "0.4rem 0.75rem", fontSize: "0.8rem", fontWeight: "600", cursor: "pointer" }}
+                >
+                  Upload Letterhead Image
+                </button>
+                <button
+                  type="button"
+                  onClick={clearStudioLetterhead}
+                  disabled={!studioLetterhead.dataUrl}
+                  style={{ border: "1px solid #cbd5e1", color: studioLetterhead.dataUrl ? "#334155" : "#94a3b8", background: "white", borderRadius: "6px", padding: "0.4rem 0.75rem", fontSize: "0.8rem", fontWeight: "600", cursor: studioLetterhead.dataUrl ? "pointer" : "not-allowed" }}
+                >
+                  Clear Letterhead
+                </button>
+                <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "#334155" }}>
+                  <input
+                    type="checkbox"
+                    checked={studioUseLetterhead}
+                    onChange={(event) => setStudioUseLetterhead(event.target.checked)}
+                  />
+                  Use letterhead background
+                </label>
+              </div>
+              <div style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                {studioLetterhead.dataUrl ? `Current letterhead: ${studioLetterhead.name}` : "No letterhead set yet."}
+              </div>
+            </div>
+
+            <div style={{ border: "1px solid #dbe2ea", borderRadius: "8px", overflow: "hidden", background: "white" }}>
+              <div style={{ background: "#f8fafc", borderBottom: "1px solid #dbe2ea", padding: "0.45rem 0.7rem", fontSize: "0.8rem", color: "#334155", fontWeight: "600" }}>
+                Live Preview
+              </div>
+              <div style={{ padding: isMobileLayout ? "1rem" : "1.2rem 1.6rem", minHeight: isMobileLayout ? "280px" : "380px", backgroundColor: "#ffffff", backgroundImage: studioUseLetterhead && studioLetterhead.dataUrl ? `url(${studioLetterhead.dataUrl})` : "none", backgroundRepeat: "no-repeat", backgroundPosition: "top center", backgroundSize: "100% auto", fontFamily: '"Times New Roman", serif', color: "#111111", lineHeight: 1.55 }}>
+                <div style={{ textAlign: "center", fontSize: "1.05rem", fontWeight: 700, marginBottom: "0.5rem" }}>
+                  {studioTitle || "Untitled Document"}
+                </div>
+                {studioSubtitle ? (
+                  <div style={{ textAlign: "center", fontSize: "0.9rem", fontWeight: 600, marginBottom: "0.9rem" }}>
+                    {studioSubtitle}
+                  </div>
+                ) : null}
+                <div style={{ whiteSpace: "pre-wrap", fontSize: "0.94rem" }}>
+                  {htmlHasVisibleText(studioBodyHtml) ? (
+                    <div dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(studioBodyHtml) }} />
+                  ) : (
+                    "Body preview will appear here..."
+                  )}
+                </div>
+                {(studioSignOff || studioSignerName || studioSignerRole) && (
+                  <div style={{ marginTop: "1.2rem", whiteSpace: "pre-wrap" }}>
+                    {studioSignOff ? <div>{studioSignOff}</div> : null}
+                    {studioSignerName ? <div style={{ marginTop: "0.8rem", fontWeight: 700 }}>{studioSignerName}</div> : null}
+                    {studioSignerRole ? <div>{studioSignerRole}</div> : null}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.6rem" }}>
+              <button
+                type="button"
+                onClick={() => saveStudioDocumentToSection("primary")}
+                disabled={!studioWordSupported}
+                style={{ background: studioWordSupported ? "#0b5ed7" : "#cbd5e1", color: "white", border: "none", borderRadius: "8px", padding: "0.6rem 0.95rem", fontSize: "0.84rem", fontWeight: "600", cursor: studioWordSupported ? "pointer" : "not-allowed" }}
+              >
+                Save as Main File
+              </button>
+              <button
+                type="button"
+                onClick={() => saveStudioDocumentToSection("additional")}
+                disabled={!studioWordSupported}
+                style={{ background: studioWordSupported ? "#e2e8f0" : "#f1f5f9", color: studioWordSupported ? "#0f172a" : "#94a3b8", border: "none", borderRadius: "8px", padding: "0.6rem 0.95rem", fontSize: "0.84rem", fontWeight: "600", cursor: studioWordSupported ? "pointer" : "not-allowed" }}
+              >
+                Save as Additional File
+              </button>
+              <button
+                type="button"
+                onClick={downloadStudioDocument}
+                style={{ background: "white", color: "#0b5ed7", border: "1px solid #0b5ed7", borderRadius: "8px", padding: "0.6rem 0.95rem", fontSize: "0.84rem", fontWeight: "600", cursor: "pointer" }}
+              >
+                Download .doc
+              </button>
+              <button
+                type="button"
+                onClick={printStudioAsPdf}
+                style={{ background: "white", color: "#0b5ed7", border: "1px solid #0b5ed7", borderRadius: "8px", padding: "0.6rem 0.95rem", fontSize: "0.84rem", fontWeight: "600", cursor: "pointer" }}
+              >
+                Print / Save PDF
+              </button>
+              <button
+                type="button"
+                onClick={clearStudioDraft}
+                style={{ background: "#f8fafc", color: "#334155", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "0.6rem 0.95rem", fontSize: "0.84rem", fontWeight: "600", cursor: "pointer" }}
+              >
+                Clear Draft
+              </button>
             </div>
           </div>
         )}
@@ -1730,6 +2592,14 @@ const CTDCompiler = ({
     await confirmClearFiles();
   };
 
+  const openQisTemplateStudio = () => {
+    window.location.assign('/qis-template');
+  };
+
+  const openQosTemplateStudio = () => {
+    window.location.assign('/qos-template');
+  };
+
 
 
   const handleNodeUpdate = (path, updatedNode) => {
@@ -2887,6 +3757,8 @@ const CTDCompiler = ({
               additionalFiles={selectedSectionUploads.additional}
               apiOption={selectedApiOption}
               isMobileLayout={isMobileLayout}
+              onOpenQisTemplate={openQisTemplateStudio}
+              onOpenQosTemplate={openQosTemplateStudio}
             />
           )}
         </div>

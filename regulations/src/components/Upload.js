@@ -3,6 +3,22 @@ import { useNavigate } from "react-router-dom";
 import { useDossier } from "../hooks/useDossier";
 import EnhancedProgressIndicator from "./EnhancedProgressIndicator";
 
+const MAX_ZIP_SIZE_BYTES = 10 * 1024 * 1024 * 1024; // 10GB
+const ZIP_STORAGE_EXPANSION_FACTOR = 2.5;
+const STORAGE_SAFETY_BUFFER_BYTES = 256 * 1024 * 1024; // 256MB
+
+const formatFileSize = (bytes) => {
+  if (!bytes && bytes !== 0) return "Unknown size";
+  const units = ["Bytes", "KB", "MB", "GB", "TB"];
+  let size = bytes;
+  let unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+  return `${size.toFixed(1)} ${units[unitIndex]}`;
+};
+
 const Upload = () => {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploadMode, setUploadMode] = useState("zip"); // "zip", "files", "folder"
@@ -15,12 +31,69 @@ const Upload = () => {
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
 
+  const isSupportedArchive = (fileName = "") => {
+    const lower = fileName.toLowerCase();
+    return lower.endsWith(".zip") || lower.endsWith(".rar");
+  };
+
+  const getSelectedSizeBytes = useCallback(() => {
+    return selectedFiles.reduce((sum, file) => sum + (file?.size || 0), 0);
+  }, [selectedFiles]);
+
+  const getEstimatedStorageBytes = useCallback(() => {
+    const selectedSize = getSelectedSizeBytes();
+    if (uploadMode === "zip") {
+      return Math.ceil(selectedSize * ZIP_STORAGE_EXPANSION_FACTOR);
+    }
+    return selectedSize;
+  }, [getSelectedSizeBytes, uploadMode]);
+
+  const checkBrowserStorageCapacity = useCallback(async (estimatedBytesNeeded) => {
+    if (!navigator.storage?.estimate) {
+      return { ok: true };
+    }
+
+    try {
+      if (navigator.storage.persist) {
+        await navigator.storage.persist();
+      }
+
+      const estimate = await navigator.storage.estimate();
+      const quota = estimate?.quota || 0;
+      const usage = estimate?.usage || 0;
+      const available = Math.max(0, quota - usage);
+
+      if (quota > 0 && estimatedBytesNeeded > quota * 0.95) {
+        return {
+          ok: false,
+          message: `❌ Upload likely too large for browser storage. Estimated needed: ${formatFileSize(estimatedBytesNeeded)}, browser quota: ${formatFileSize(quota)}.`
+        };
+      }
+
+      if (available > 0 && estimatedBytesNeeded + STORAGE_SAFETY_BUFFER_BYTES > available) {
+        return {
+          ok: false,
+          message: `❌ Not enough free browser storage. Estimated needed: ${formatFileSize(estimatedBytesNeeded)}, available: ${formatFileSize(available)}.`
+        };
+      }
+
+      return { ok: true };
+    } catch {
+      // Continue if browser blocks storage APIs
+      return { ok: true };
+    }
+  }, []);
+
   const handleFileSelect = (event) => {
     const files = Array.from(event.target.files || []);
     if (uploadMode === "zip") {
       const file = files[0];
-      if (!file?.name.toLowerCase().endsWith(".zip")) {
-        setStatus("❌ Please select a ZIP file");
+      if (!file?.name || !isSupportedArchive(file.name)) {
+        setStatus("❌ Please select a ZIP or RAR archive");
+        return;
+      }
+      if (file.size > MAX_ZIP_SIZE_BYTES) {
+        setStatus(`❌ Archive exceeds 10GB limit (${formatFileSize(file.size)} selected)`);
         return;
       }
       setSelectedFiles([file]);
@@ -116,11 +189,15 @@ const Upload = () => {
     const files = await collectFilesFromDataTransfer(e.dataTransfer);
     
     if (uploadMode === "zip") {
-      const zipFile = files.find(f => f.name.toLowerCase().endsWith('.zip'));
+      const zipFile = files.find((f) => f?.name && isSupportedArchive(f.name));
       if (zipFile) {
+        if (zipFile.size > MAX_ZIP_SIZE_BYTES) {
+          setStatus(`❌ Archive exceeds 10GB limit (${formatFileSize(zipFile.size)} selected)`);
+          return;
+        }
         setSelectedFiles([zipFile]);
       } else {
-        setStatus("❌ Please drop a ZIP file");
+        setStatus("❌ Please drop a ZIP or RAR archive");
       }
     } else {
       // For both files and folder mode, process all dropped files
@@ -156,6 +233,13 @@ const Upload = () => {
           startTime: uploadStartTime,
         });
       } else if (progressData.type === "batch_progress") {
+        const stageLabel =
+          progressData.stage === "complete"
+            ? "Finalizing"
+            : progressData.stage === "saving"
+            ? "Saving files"
+            : "Processing files";
+
         setProgress({
           type: "basic",
           value: progressData.progress,
@@ -166,7 +250,7 @@ const Upload = () => {
           currentItem: progressData.currentFile,
         });
         setStatus(
-          `Processing files... ${progressData.processed}/${
+          `${stageLabel}... ${progressData.processed}/${
             progressData.total
           } (${Math.round(progressData.progress)}%)`
         );
@@ -194,9 +278,21 @@ const Upload = () => {
       return;
     }
 
+    if (uploadMode === "zip" && selectedFiles[0]?.size > MAX_ZIP_SIZE_BYTES) {
+      setStatus(`❌ Archive exceeds 10GB limit (${formatFileSize(selectedFiles[0].size)} selected)`);
+      return;
+    }
+
+    const estimatedStorageBytes = getEstimatedStorageBytes();
+    const storageCheck = await checkBrowserStorageCapacity(estimatedStorageBytes);
+    if (!storageCheck.ok) {
+      setStatus(storageCheck.message);
+      return;
+    }
+
     const startTime = Date.now();
     setUploadStartTime(startTime);
-    setStatus(uploadMode === "zip" ? "🔄 Processing ZIP file..." : "🔄 Processing files...");
+    setStatus(uploadMode === "zip" ? "🔄 Processing archive..." : "🔄 Processing files...");
     setProgress({ type: "basic", value: 0, startTime });
 
     let result;
@@ -237,7 +333,7 @@ const Upload = () => {
 
   const getModeDescription = () => {
     switch(uploadMode) {
-      case "zip": return "Upload complete dossier as ZIP file";
+      case "zip": return "Upload complete dossier as ZIP or RAR archive";
       case "files": return "Upload individual PDF/DOC files from external sources";
       case "folder": return "Upload folder containing downloaded files";
       default: return "";
@@ -246,13 +342,15 @@ const Upload = () => {
 
   const getDropZoneText = () => {
     if (uploadMode === "zip") {
-      return selectedFiles.length > 0 ? selectedFiles[0].name : "Drop your ZIP file here";
+      return selectedFiles.length > 0 ? selectedFiles[0].name : "Drop your archive here";
     } else {
       return selectedFiles.length > 0 
         ? `${selectedFiles.length} files selected` 
         : "Drop PDF/DOC files here";
     }
   };
+
+  const estimatedStorageBytes = getEstimatedStorageBytes();
 
   return (
     <div
@@ -296,7 +394,7 @@ const Upload = () => {
               textAlign: "center",
             }}
           >
-            Upload your pharmaceutical dossier ZIP file for regulatory screening
+            Upload your pharmaceutical dossier archive file for regulatory screening
             and review
           </p>
         </div>
@@ -324,7 +422,7 @@ const Upload = () => {
                 textAlign: "left"
               }}
             >
-              <div style={{ fontWeight: "600", color: "#193441", marginBottom: "4px" }}>🗄 ZIP Dossier</div>
+              <div style={{ fontWeight: "600", color: "#193441", marginBottom: "4px" }}>🗄 Archive Dossier</div>
               <div style={{ fontSize: "12px", color: "#666" }}>Complete dossier package</div>
             </button>
             
@@ -424,7 +522,7 @@ const Upload = () => {
               }}
             >
               {uploadMode === "zip" && selectedFiles.length > 0 && selectedFiles[0].size
-                ? `File size: ${(selectedFiles[0].size / (1024 * 1024)).toFixed(1)} MB`
+                ? `File size: ${formatFileSize(selectedFiles[0].size)}`
                 : "or click to browse and select files"}
             </p>
             <div
@@ -442,10 +540,28 @@ const Upload = () => {
               <span>📋</span>
               <span>
                 {uploadMode === "zip" 
-                  ? "ZIP files only • Maximum 2GB"
+                  ? "Archive files (ZIP/RAR) • Maximum 10GB"
                   : "PDF, DOC, DOCX files • Multiple selection allowed"}
               </span>
             </div>
+            {selectedFiles.length > 0 && (
+              <div
+                style={{
+                  marginTop: "8px",
+                  fontSize: "12px",
+                  color: "#495057",
+                }}
+              >
+                Estimated browser storage needed:{" "}
+                <strong>{formatFileSize(estimatedStorageBytes)}</strong>
+                {uploadMode === "zip" && (
+                  <span style={{ color: "#6c757d" }}>
+                    {" "}
+                    (archive expands after extraction)
+                  </span>
+                )}
+              </div>
+            )}
             
             {/* File inputs */}
             <input
@@ -460,7 +576,7 @@ const Upload = () => {
             <input
               ref={folderInputRef}
               type="file"
-              accept={uploadMode === "zip" ? ".zip" : ".pdf,.doc,.docx"}
+              accept={uploadMode === "zip" ? ".zip,.rar" : ".pdf,.doc,.docx"}
               webkitdirectory={uploadMode === "folder"}
               multiple={uploadMode === "folder"}
               onChange={handleFileSelect}

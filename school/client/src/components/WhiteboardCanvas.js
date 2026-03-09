@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Arrow, Circle, Group, Layer, Line, Rect, Stage, Text, Transformer } from "react-konva";
 import CodeExecutionService from "../services/codeExecutionService";
+import { studentAPI } from "../services/api";
 import "../styles/WhiteboardCanvas.css";
 
 const BOARD_WIDTH = 6000;
 const BOARD_HEIGHT = 4000;
 const MIN_SCALE = 0.2;
 const MAX_SCALE = 4;
+const REMOTE_SYNC_DEBOUNCE_MS = 1000;
 
 const TOOL_ORDER = [
   { id: "select", label: "Select" },
@@ -28,8 +30,24 @@ const CODE_LANGUAGES = ["javascript", "python"];
 const INLINE_DRAFT_SOURCE = "__inline-draft__";
 
 const createId = () => `wb-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+const clamp = (value, min, max, fallback) => {
+  const parsed = Number(value);
+  if (Number.isNaN(parsed)) {
+    return fallback;
+  }
+  return Math.min(max, Math.max(min, parsed));
+};
 
-function WhiteboardCanvas({ storageKey }) {
+const normalizeSnapshot = (raw = {}) => ({
+  objects: Array.isArray(raw.objects) ? raw.objects : [],
+  stageScale: clamp(raw.stageScale, MIN_SCALE, MAX_SCALE, 0.75),
+  stagePosition: {
+    x: clamp(raw.stagePosition?.x, -20000, 20000, 60),
+    y: clamp(raw.stagePosition?.y, -20000, 20000, 40),
+  },
+});
+
+function WhiteboardCanvas({ storageKey, courseId, slideIndex, userId }) {
   const containerRef = useRef(null);
   const stageRef = useRef(null);
   const transformerRef = useRef(null);
@@ -44,6 +62,8 @@ function WhiteboardCanvas({ storageKey }) {
     startY: 0,
     targetId: null,
   });
+  const syncTimeoutRef = useRef(null);
+  const lastSyncedSnapshotRef = useRef("");
 
   const [viewportSize, setViewportSize] = useState({ width: 980, height: 480 });
   const [tool, setTool] = useState("select");
@@ -80,6 +100,9 @@ function WhiteboardCanvas({ storageKey }) {
     sourceId: null,
   });
   const [isInlineDragging, setIsInlineDragging] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
+  const [syncStatus, setSyncStatus] = useState("local");
+  const isAuthenticated = Boolean(userId && courseId && slideIndex);
 
   const selectedObject = useMemo(
     () => objects.find((item) => item.id === selectedId) || null,
@@ -89,6 +112,23 @@ function WhiteboardCanvas({ storageKey }) {
     () => (selectedObject?.type === "code" ? selectedObject : null),
     [selectedObject]
   );
+  const syncLabel = useMemo(() => {
+    if (!isAuthenticated) {
+      return "Local only";
+    }
+    switch (syncStatus) {
+      case "saved":
+        return "Synced";
+      case "syncing":
+        return "Syncing...";
+      case "pending":
+        return "Unsynced changes";
+      case "error":
+        return "Sync error";
+      default:
+        return "Local only";
+    }
+  }, [isAuthenticated, syncStatus]);
   const inlineSourceId = inlineTextEditor.targetId || INLINE_DRAFT_SOURCE;
   const showInlineRunOutput =
     inlineTextEditor.open &&
@@ -214,35 +254,140 @@ function WhiteboardCanvas({ storageKey }) {
   }, []);
 
   useEffect(() => {
-    if (!storageKey) return;
-    const saved = localStorage.getItem(storageKey);
-    if (!saved) return;
+    let isCancelled = false;
 
-    try {
-      const parsed = JSON.parse(saved);
-      setObjects(Array.isArray(parsed.objects) ? parsed.objects : []);
-      setStageScale(typeof parsed.stageScale === "number" ? parsed.stageScale : 0.75);
-      setStagePosition(
-        parsed.stagePosition && typeof parsed.stagePosition.x === "number"
-          ? parsed.stagePosition
-          : { x: 60, y: 40 }
-      );
-    } catch (error) {
-      // Ignore malformed saved data.
-    }
-  }, [storageKey]);
+    const hydrate = async () => {
+      setIsHydrated(false);
+      setSyncStatus(isAuthenticated ? "syncing" : "local");
+
+      let localSnapshot = normalizeSnapshot({});
+      let hasLocalSnapshot = false;
+
+      if (storageKey) {
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          try {
+            localSnapshot = normalizeSnapshot(JSON.parse(saved));
+            hasLocalSnapshot = true;
+          } catch (error) {
+            // Ignore malformed saved data.
+          }
+        }
+      }
+
+      if (hasLocalSnapshot) {
+        setObjects(localSnapshot.objects);
+        setStageScale(localSnapshot.stageScale);
+        setStagePosition(localSnapshot.stagePosition);
+      } else {
+        setObjects([]);
+        setStageScale(0.75);
+        setStagePosition({ x: 60, y: 40 });
+      }
+
+      if (isAuthenticated) {
+        try {
+          const response = await studentAPI.getWhiteboardNote(courseId, slideIndex);
+          const remoteSnapshot = response?.note?.snapshot
+            ? normalizeSnapshot(response.note.snapshot)
+            : null;
+
+          if (!isCancelled && remoteSnapshot) {
+            setObjects(remoteSnapshot.objects);
+            setStageScale(remoteSnapshot.stageScale);
+            setStagePosition(remoteSnapshot.stagePosition);
+            if (storageKey) {
+              localStorage.setItem(storageKey, JSON.stringify(remoteSnapshot));
+            }
+            lastSyncedSnapshotRef.current = JSON.stringify(remoteSnapshot);
+            setSyncStatus("saved");
+            setIsHydrated(true);
+            return;
+          }
+        } catch (error) {
+          if (!isCancelled) {
+            setSyncStatus("error");
+          }
+        }
+      }
+
+      lastSyncedSnapshotRef.current = hasLocalSnapshot
+        ? JSON.stringify(localSnapshot)
+        : "";
+      if (!isCancelled) {
+        setSyncStatus(isAuthenticated ? "pending" : "local");
+        setIsHydrated(true);
+      }
+    };
+
+    hydrate();
+
+    return () => {
+      isCancelled = true;
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+        syncTimeoutRef.current = null;
+      }
+    };
+  }, [storageKey, courseId, slideIndex, isAuthenticated]);
 
   useEffect(() => {
-    if (!storageKey) return;
-    localStorage.setItem(
-      storageKey,
-      JSON.stringify({
-        objects,
-        stageScale,
-        stagePosition,
-      })
-    );
-  }, [storageKey, objects, stageScale, stagePosition]);
+    if (!isHydrated) return;
+
+    const snapshot = normalizeSnapshot({
+      objects,
+      stageScale,
+      stagePosition,
+    });
+    const serializedSnapshot = JSON.stringify(snapshot);
+
+    if (storageKey) {
+      localStorage.setItem(storageKey, serializedSnapshot);
+    }
+
+    if (!isAuthenticated) {
+      setSyncStatus("local");
+      return;
+    }
+
+    if (serializedSnapshot === lastSyncedSnapshotRef.current) {
+      setSyncStatus("saved");
+      return;
+    }
+
+    setSyncStatus("pending");
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current);
+      syncTimeoutRef.current = null;
+    }
+
+    syncTimeoutRef.current = window.setTimeout(async () => {
+      setSyncStatus("syncing");
+      try {
+        await studentAPI.saveWhiteboardNote(courseId, slideIndex, snapshot);
+        lastSyncedSnapshotRef.current = serializedSnapshot;
+        setSyncStatus("saved");
+      } catch (error) {
+        setSyncStatus("error");
+      }
+    }, REMOTE_SYNC_DEBOUNCE_MS);
+
+    return () => {
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+        syncTimeoutRef.current = null;
+      }
+    };
+  }, [
+    isHydrated,
+    storageKey,
+    objects,
+    stageScale,
+    stagePosition,
+    isAuthenticated,
+    courseId,
+    slideIndex,
+  ]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -377,6 +522,61 @@ function WhiteboardCanvas({ storageKey }) {
   const resetView = () => {
     setStageScale(1);
     setStagePosition({ x: 24, y: 24 });
+  };
+
+  const exportAsPdf = () => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const imageData = stage.toDataURL({
+      pixelRatio: 2,
+      mimeType: "image/png",
+      quality: 1,
+    });
+    const title = storageKey
+      ? storageKey.replace(/[^a-z0-9-_:]/gi, "-")
+      : "whiteboard-note";
+
+    const printWindow = window.open("", "_blank", "noopener,noreferrer");
+    if (!printWindow) {
+      const download = document.createElement("a");
+      download.href = imageData;
+      download.download = `${title}.png`;
+      download.click();
+      return;
+    }
+
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <title>${title}</title>
+          <style>
+            body {
+              margin: 0;
+              background: #ffffff;
+              display: flex;
+              justify-content: center;
+              align-items: flex-start;
+              padding: 18px;
+            }
+            img {
+              max-width: 100%;
+              height: auto;
+              border: 1px solid #e2e8f0;
+            }
+            @media print {
+              body { padding: 0; }
+              img { border: none; width: 100%; }
+            }
+          </style>
+        </head>
+        <body>
+          <img src="${imageData}" alt="Whiteboard export" onload="window.focus(); setTimeout(() => window.print(), 180);" />
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   const updateObject = (id, updater) => {
@@ -1197,6 +1397,7 @@ function WhiteboardCanvas({ storageKey }) {
           <button type="button" onClick={() => moveLayer("up")} disabled={!selectedId}>Forward</button>
           <button type="button" onClick={() => moveLayer("down")} disabled={!selectedId}>Back</button>
           <button type="button" onClick={deleteSelected} disabled={!selectedId}>Delete</button>
+          <button type="button" onClick={exportAsPdf} disabled={objects.length === 0}>Export PDF</button>
           <button type="button" onClick={() => { setObjects([]); setSelectedId(null); }}>Clear</button>
         </div>
       </div>
@@ -1401,6 +1602,7 @@ function WhiteboardCanvas({ storageKey }) {
         <span>Zoom: {Math.round(stageScale * 100)}%</span>
         <span>Objects: {objects.length}</span>
         <span>Tool: {tool}</span>
+        <span>Cloud: {syncLabel}</span>
         <span>Hold Space to pan</span>
       </div>
 

@@ -1,16 +1,17 @@
 import React, { useState } from "react";
 import "../styles/Homepage.css";
 import "../styles/Pages.css";
-import { courses } from "../data/courses";
+import { courses as localCourses } from "../data/courses";
 import CohortTrainingModal from "./CohortTrainingModal";
 
-const PricingPage = () => {
+const PricingPage = ({ courses: providedCourses, user }) => {
+  const courses = providedCourses?.length ? providedCourses : localCourses;
   const [showCohortModal, setShowCohortModal] = useState(false);
   const [cohortCourse, setCohortCourse] = useState(null);
 
   const pricingGroups = courses.reduce((acc, course) => {
     acc[course.category] = acc[course.category] || { courses: [] };
-    acc[course.category].courses.push(course.name);
+    acc[course.category].courses.push(course);
     return acc;
   }, {});
 
@@ -31,6 +32,7 @@ const PricingPage = () => {
             <a href="#/courses">Courses</a>
             <a href="#/my-courses">My Courses</a>
             <a href="#/timetable">Timetable</a>
+            <a href="#/certificate-verify">Verify Certificate</a>
             <a href="#/pricing">Cohort Training</a>
           </div>
         </div>
@@ -59,7 +61,7 @@ const PricingPage = () => {
                   <p>Includes three sessions per week and assessment reviews.</p>
                   <ul className="page-list">
                     {row.courses.map((course) => (
-                      <li key={course}>{course}</li>
+                      <li key={course.id || course.name}>{course.name}</li>
                     ))}
                   </ul>
                   <div className="page-actions">
@@ -67,7 +69,7 @@ const PricingPage = () => {
                       type="button"
                       className="primary-link"
                       onClick={() => {
-                        setCohortCourse({ name: row.courses[0] });
+                        setCohortCourse(row.courses[0] || null);
                         setShowCohortModal(true);
                       }}
                     >
@@ -93,9 +95,14 @@ const PricingPage = () => {
         onClose={() => setShowCohortModal(false)}
         onContinue={() => {
           setShowCohortModal(false);
-          window.location.hash = "#/my-courses";
+          window.location.hash = user ? "#/my-courses" : "#/";
         }}
+        user={user}
+        mode="application"
         courseName={cohortCourse?.name}
+        courseSlug={cohortCourse?.id}
+        courseId={cohortCourse?._id}
+        primaryLabel={user ? "Open My Courses" : "Back to Home"}
       />
     </div>
   );

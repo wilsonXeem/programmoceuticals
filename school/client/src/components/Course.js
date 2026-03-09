@@ -9,7 +9,15 @@ import CodeExecutionService, {
 import WhiteboardCanvas from "./WhiteboardCanvas";
 import "../styles/ProgrammingNotepad.css";
 
-function Course({ language, slidesData, onBackToHome, user }) {
+function Course({
+  language,
+  slidesData,
+  onBackToHome,
+  user,
+  totalCourseSlides = 0,
+  isPreviewMode = false,
+  previewPercent = 20,
+}) {
   const [currentSlide, setCurrentSlide] = useState(1);
   const [visitedSlides, setVisitedSlides] = useState(new Set([1]));
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -34,6 +42,7 @@ function Course({ language, slidesData, onBackToHome, user }) {
   const [noteCategory, setNoteCategory] = useState("general");
   const codeEditorRef = useRef(null);
   const totalSlides = slidesData.length;
+  const hasPreviewLimit = isPreviewMode && totalCourseSlides > totalSlides;
 
   useEffect(() => {
     const loadProgress = async () => {
@@ -321,9 +330,18 @@ function Course({ language, slidesData, onBackToHome, user }) {
       <div className="progress-bar">
         <div
           className="progress-fill"
-          style={{ width: `${(visitedSlides.size / totalSlides) * 100}%` }}
+          style={{
+            width: `${totalSlides > 0 ? (visitedSlides.size / totalSlides) * 100 : 0}%`,
+          }}
         ></div>
       </div>
+
+      {hasPreviewLimit && (
+        <div className="course-access-banner">
+          Guest preview mode: viewing {totalSlides} of {totalCourseSlides} slides ({previewPercent}%).
+          Create a free account to unlock full course access.
+        </div>
+      )}
 
       <Navigation
         currentSlide={currentSlide}
@@ -558,10 +576,15 @@ function Course({ language, slidesData, onBackToHome, user }) {
             </button>
           </div>
 
-          <div className="notepad-content">
-            {noteMode === "whiteboard" ? (
-              <WhiteboardCanvas storageKey={`whiteboard:${language}:${currentSlide}`} />
-            ) : noteMode === "code" ? (
+            <div className="notepad-content">
+              {noteMode === "whiteboard" ? (
+              <WhiteboardCanvas
+                storageKey={`whiteboard:${language}:${currentSlide}`}
+                courseId={language}
+                slideIndex={currentSlide}
+                userId={user?.id}
+              />
+              ) : noteMode === "code" ? (
               <div className="code-workspace">
                 <div className="code-editor-section">
                   <div className="code-editor-header">

@@ -347,7 +347,7 @@ const PDFViewer = ({ fileUrl, height = "70vh" }) => {
           overflow: "hidden",
         }}
       >
-        <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
+        <Worker workerUrl="/pdf.worker.min.js">
           <Viewer
             fileUrl={fileUrl}
             plugins={[searchPluginInstance, toolbarPluginInstance]}
