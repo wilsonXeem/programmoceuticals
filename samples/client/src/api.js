@@ -2,12 +2,14 @@ const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:410
 
 export async function apiRequest(path, options = {}) {
   const url = `${API_BASE_URL}${path}`;
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers || {}),
+  };
 
   const response = await fetch(url, {
-    headers: {
-      "Content-Type": "application/json",
-    },
     ...options,
+    headers,
   });
 
   let payload = {};
